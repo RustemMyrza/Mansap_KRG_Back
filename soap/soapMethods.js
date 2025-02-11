@@ -12,6 +12,21 @@ const soapMethods = {
                 xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
             }
         }
+    },
+    NomadWebMenuList: {
+        name: 'NomadWebMenuList',
+        args:  {
+            "cus:NomadWebMenuList_Input": {
+                "cus:ParentQueueId": "?",
+                "cus:BranchQueueId": "3"
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
     }
 };
 

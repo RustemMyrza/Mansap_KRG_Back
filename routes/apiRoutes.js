@@ -4,6 +4,7 @@ import soapMethods from "../soap/soapMethods.js";
 
 const router = express.Router();
 
-router.get('/service/list', apiController.getData(soapMethods.NomadOperatorQueueList))
+router.get('/web-service/list', apiController.getWebServiceList());
+
 
 export default router;

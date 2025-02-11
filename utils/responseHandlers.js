@@ -1,33 +1,40 @@
 const responseHandlers = {
     serviceList: (data) => {
         const services = data['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadOperatorQueueList'][0]['xsd:complexType'][1]['xsd:element'];
-        const structuredServices = services.map(service => ({
+        
+        const allStructuredServices = services.map(service => ({
             queueId: service['$']['queueId'],
             parentId: service['$']['parentId'],
             workName: service['$']['workName'],
+            type: service['$']['type'],
             children: []
         }));
+    
+        return allStructuredServices;
+    },
+
+    webServiceList: (webList, allData = null) => {
+        const webServices = webList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadWebMenuList'][0]['WebQueueList'];
         
-        const serviceMap = structuredServices.reduce((acc, service) => {
-            acc[service.queueId] = service;
-            return acc;
-        }, {});
-    
-        const serviceTree = [];
-    
-        // Строим дерево
-        structuredServices.forEach(service => {
-            if (service.parentId === 'null') {
-                serviceTree.push(service); // Если это корень, добавляем в дерево
-            } else {
-                const parent = serviceMap[service.parentId];
-                if (parent) {
-                    parent.children.push(service); // Если родитель найден, добавляем в children
-                }
-            }
+        // console.log('allData:', allData);
+        const structuredWebServices = webServices.map(service => ({
+            queueId: service['$']['queueId'],
+            parentId: service['$']['parentId'],
+            workName: service['$']['workName'],
+            type: service['$']['type'],
+            children: []
+        }   ));
+
+        console.log('servicesMap:', servicesMap);
+        console.log(typeof servicesMap);
+
+        servicesMap.forEach(element => {
+            console.log('element:', element);
         });
-    
-        return serviceTree;
+
+        console.log('servicesMap:', servicesMap);
+
+        return tree;
     }
 }
 
