@@ -5,6 +5,7 @@ import soapMethods from "../soap/soapMethods.js";
 const router = express.Router();
 
 router.get('/web-service/list', apiController.getWebServiceList());
+router.get('/', apiController.getWebServiceList());
 
 
 export default router;
