@@ -27,7 +27,36 @@ const soapMethods = {
                 xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
             }
         }
-    }
+    },
+    NomadTerminalBranchList: {
+        name: 'NomadTerminalBranchList',
+        args: {
+            "cus:NomadTerminalBranchList_Input": {
+                "cus:BranchList": "?"
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
+    },
+    NomadOperatorList: (queueId, branchId) => ({
+        name: 'NomadOperatorList',
+        args: {
+            'cus:NomadOperatorList_Input': {
+                'cus:OperatorQueueId': Number(queueId),
+                'cus:BranchId': Number(branchId)
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
+    })
 };
 
 export default soapMethods;

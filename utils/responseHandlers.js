@@ -35,6 +35,11 @@ const responseHandlers = {
         console.log('servicesMap:', servicesMap);
 
         return tree;
+    },
+
+    availableOperators: (operatorList) => {
+        const operators = operatorList['soapenv:Envelope'];
+        return operators;
     }
 }
 

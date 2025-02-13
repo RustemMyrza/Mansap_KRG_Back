@@ -17,22 +17,18 @@ async function availableOperators(methodData) {
             throw new Error('SOAP method not found');
         }
 
-        operatorClient[methodData.name](methodData.args, methodData.options, async (err, result, rawResponse) => {
-            if (err) {
-                console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
-                return reject(err);
-            }
+        return new Promise((resolve, reject) => { // ✅ Возвращаем новый Promise
+            operatorClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
 
-            console.log(`[${new Date().toISOString()}] Ответ получен!`);
-
-            try {
-                const parsedResult = await parseXml(rawResponse);
-                const serviceList = responseHandlers.serviceList(parsedResult);
-                resolve(serviceList); // ✅ Возвращаем результат
-            } catch (parseErr) {
-                console.error(`[${new Date().toISOString()}] Ошибка парсинга XML:`, parseErr);
-                reject(parseErr);
-            }
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const operators = parseXml(rawResponse);
+                
+                resolve(operators); // ✅ Возвращаем результат
+            });
         });
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
@@ -40,7 +36,70 @@ async function availableOperators(methodData) {
     }
 }
 
+const getBranchList = (methodData) => async (req, res) => {
+    const tree = []
+    const map = new Map();
 
+    function parseName(name) {
+        const parts = name.split(';');
+        const parsed = {};
+      
+        for (const part of parts) {
+          const [lang, value] = part.split('=');
+          if (lang && value) {
+            parsed[`name_${lang.toLowerCase()}`] = value.trim();
+          }
+        }
+      
+        return parsed;
+    }
+
+    try {
+        const terminalClient = await getSoapClient(url.terminal);
+
+        if (!terminalClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            throw new Error('SOAP method not found');
+        }
+
+        terminalClient[methodData.name](methodData.args, methodData.options, async (err, result, rawResponse) => {
+            if (err) {
+                console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                return reject(err);
+            }
+
+            console.log(`[${new Date().toISOString()}] Ответ получен!`);
+            result.Branch = result.Branch.map(branch => {
+                let parsedName = parseName(branch.attributes.workName);
+                delete branch.attributes.workName;
+                branch.attributes = {
+                    ...branch.attributes,
+                    ...parsedName
+                }
+                return branch;
+            });
+            result.Branch.forEach(item => {
+                const node = { ...item.attributes, children: [] };
+                map.set(node.branchId, node);
+                
+                if (node.parentId === "null") {
+                    tree.push(node);
+                } else {
+                    const parent = map.get(node.parentId);
+                    if (parent) {
+                        parent.children.push(node);
+                    } else {
+                        map.set(node.parentId, { children: [node] });
+                    }
+                }
+            });
+            res.json(tree)
+        });
+    } catch (error) {
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        throw error;
+    }
+}
 
 const getWebServiceList = () => async (req, res) => {
     const tree = [];
@@ -60,7 +119,7 @@ const getWebServiceList = () => async (req, res) => {
         return parsed;
     }
     
-    let services = await requestToDB('SELECT F_ID, F_NAME, F_WEB_VISIBLE, F_ID_PARENT FROM t_g_queue WHERE F_ID_PARENT IS NOT NULL AND F_WEB_VISIBLE = 1')
+    let services = await requestToDB('SELECT F_ID, F_NAME, F_WEB_VISIBLE, F_ID_PARENT FROM t_g_queue WHERE F_WEB_VISIBLE = 1')
     console.log('services:', services);
     services = services.map(service => ({
         queueId: service.F_ID,
@@ -84,4 +143,4 @@ const getWebServiceList = () => async (req, res) => {
     return res.json(tree);
 };
 
-export default { getWebServiceList };
+export default { getWebServiceList, getBranchList, availableOperators };
