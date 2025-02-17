@@ -13,3 +13,32 @@ export const parseXml = (xmlString) => {
         });
     });
 };
+
+export function parseXMLtoJSON(xml) {
+    // Находим тег <xsd:element ... />
+    const match = xml.match(/<xsd:element\s+([^>]+)\/>/);
+    if (!match) {
+        console.error("Не найден xsd:element");
+        return {};
+    }
+
+    // Извлекаем строку с атрибутами
+    const attributesString = match[1];
+
+    // Разбираем атрибуты формата key="value"
+    const attributesArray = attributesString.match(/([\w:.-]+)="([^"]*)"/g);
+
+    const jsonObject = {};
+    if (attributesArray) {
+        attributesArray.forEach(attr => {
+            const parts = attr.match(/([\w:.-]+)="([^"]*)"/);
+            if (parts) {
+                const key = parts[1];
+                const value = parts[2];
+                jsonObject[key] = value;
+            }
+        });
+    }
+
+    return jsonObject;
+}

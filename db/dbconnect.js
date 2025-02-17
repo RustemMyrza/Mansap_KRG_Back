@@ -6,8 +6,9 @@ export default async function requestToDB(request) {
     connection = await mysql.createConnection({
       host: 'localhost',
       user: 'root',
-      password: 'root',
-      database: 'central_enpf'
+      password: 'root_4155',
+      database: 'central_enpf',
+      charset: 'utf8mb4'
     });
 
     const [rows] = await connection.execute(request); // Извлекаем только данные

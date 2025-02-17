@@ -38,8 +38,56 @@ const responseHandlers = {
     },
 
     availableOperators: (operatorList) => {
-        const operators = operatorList['soapenv:Envelope'];
-        return operators;
+        const operators = operatorList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadOperatorList'][0]['xsd:complexType'][1]['xsd:element'];
+        const structuredOperators = operators.map(operator => ({
+            operatorId: operator['$']['operatorId'],
+            name: operator['$']['workName']
+        }))
+        return structuredOperators;
+    },
+
+    getTicket: (data) => {
+        const ticketData = data['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalEvent_Now'][0];
+        console.log('ticketData:', ticketData);
+        const structuredTicketData = ({
+            eventId: ticketData['cus:eventId'][0],
+            ticketNo: ticketData['cus:TicketNo'][0],
+            startTime: ticketData['cus:StartTime'][0],
+            serviceName: ticketData['cus:ServiceName'][0],
+            orderNum: ticketData['cus:OrderNum'][0],
+            proposalTime: ticketData['cus:ProposalTime'][0]
+        })
+        return structuredTicketData;
+    },
+
+    ticketInfo: (ticketInfo) => {
+        const parsedTicketInfo = ticketInfo['soapenv:Envelope'];
+        return parsedTicketInfo;
+    },
+    branchList: (xmlBranchList) => {
+        const branchList = xmlBranchList['soapenv:Envelope']["soapenv:Body"][0]['cus:NomadWindowList'][0]["xsd:complexType"][1]["xsd:element"];
+        const structuredBranchList = branchList.map(branchData => ({
+            windowId: branchData['$']["WindowId"],
+            operatorId: branchData['$']["OperatorId"],
+            no: branchData['$']["No"],
+            role: branchData['$']["Role"],
+        }))
+        return structuredBranchList;
+    },
+    newTicketList: (xmlTicketList) => {
+        const ticketList = xmlTicketList["soapenv:Envelope"]["soapenv:Body"][0]["cus:NomadAllTicketList"][0]["xsd:complexType"][1]["xsd:element"];
+        const structuredTicketList = ticketList
+            .filter(ticket => ticket['$']['State'] == 'NEW')
+            .map(ticket => {
+                ticket = ticket['$'];
+                return ticket;
+            });
+        const sortedStructuredTicketList = structuredTicketList.sort((a, b) => Number(a.StartTime) - Number(b.StartTime));
+        return sortedStructuredTicketList;
+    },
+    ticketList: (xmlTicketList) => {
+        const ticketList = xmlTicketList["soapenv:Envelope"]["soapenv:Body"][0]["cus:NomadAllTicketList"][0]["xsd:complexType"][1]["xsd:element"];
+        return ticketList;
     }
 }
 

@@ -4,8 +4,8 @@ import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 
 const url = {
-    operator: 'http://10.10.111.85:3856?wsdl',
-    terminal: 'http://10.10.111.85:3857?wsdl'
+    operator: 'http://192.168.101.3:3856?wsdl',
+    terminal: 'http://192.168.101.3:3857?wsdl'
 };
 
 async function availableOperators(methodData) {
@@ -25,11 +25,37 @@ async function availableOperators(methodData) {
                 }
 
                 console.log(`[${new Date().toISOString()}] Ответ получен!`);
-                const operators = parseXml(rawResponse);
-                
-                resolve(operators); // ✅ Возвращаем результат
+                const parsedResponse = parseXml(rawResponse);
+                resolve(parsedResponse); // ✅ Возвращаем результат
             });
         });
+    } catch (error) {
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        throw error;
+    }
+}
+
+async function getTicket (methodData) {
+    try {
+        const terminalClient = await getSoapClient(url.terminal);
+
+        if (!terminalClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            throw new Error('SOAP method not found');
+        }
+
+        return new Promise((resolve, reject) => {
+            terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+    
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const parsedResponse = parseXml(rawResponse);
+                resolve(parsedResponse);
+            })
+        })
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
         throw error;
@@ -119,8 +145,7 @@ const getWebServiceList = () => async (req, res) => {
         return parsed;
     }
     
-    let services = await requestToDB('SELECT F_ID, F_NAME, F_WEB_VISIBLE, F_ID_PARENT FROM t_g_queue WHERE F_WEB_VISIBLE = 1')
-    console.log('services:', services);
+    let services = await requestToDB('SELECT F_ID, F_NAME, F_WEB_VISIBLE, F_ID_PARENT FROM t_g_queue WHERE F_WEB_VISIBLE = 1');
     services = services.map(service => ({
         queueId: service.F_ID,
         parentId: service.F_ID_PARENT,
@@ -143,4 +168,192 @@ const getWebServiceList = () => async (req, res) => {
     return res.json(tree);
 };
 
-export default { getWebServiceList, getBranchList, availableOperators };
+
+async function getTicketInfo(methodData) {
+    try {
+        const terminalClient = await getSoapClient(url.terminal);
+
+        console.log("SOAP-клиент загружен:", terminalClient);
+
+        if (!terminalClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            throw new Error('SOAP method not found');
+        }
+
+        return new Promise((resolve, reject) => {
+            terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                console.log("SOAP Response:", { err, result, rawResponse });
+
+                if (err && !rawResponse) {
+                    // Ошибка без полезного ответа – отклоняем промис
+                    console.error(`[${new Date().toISOString()}] Критическая ошибка SOAP:`, err);
+                    return reject(err);
+                }
+
+                console.warn(`[${new Date().toISOString()}] Ошибка SOAP, но есть данные:`, err);
+                resolve(rawResponse || result);
+            });
+        });
+    } catch (error) {
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        throw error;
+    }
+}
+
+async function cancelTheQueue (methodData) {
+    try {
+        const operatorClient = await getSoapClient(url.operator);
+
+        if (!operatorClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            throw new Error('SOAP method not found');
+        }
+
+        return new Promise((resolve, reject) => {
+            operatorClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+    
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                console.log('rawResponse:', rawResponse);
+                // const parsedResponse = parseXml(rawResponse);
+                // resolve(parsedResponse);
+            })
+        })
+    } catch (error) {        
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        throw error;
+    }
+}
+
+async function branchWindowList (methodData) {
+    try {
+        const operatorClient = await getSoapClient(url.operator);
+
+        if (!operatorClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            return res.status(500).json({ error: 'SOAP method not found' });
+        }
+        return new Promise((resolve, reject) => {
+            operatorClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+    
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const xmlData = parseXml(rawResponse);
+                resolve(xmlData);
+            });
+        })
+
+    } catch (error) {        
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+};
+
+async function ticketList (methodData) {
+    try {
+        const operatorClient = await getSoapClient(url.operator);
+
+        if (!operatorClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            return res.status(500).json({ error: 'SOAP method not found' });
+        }
+        return new Promise((resolve, reject) => {
+            operatorClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+    
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const xmlData = parseXml(rawResponse);
+                resolve(xmlData);
+            });
+        })
+
+    } catch (error) {        
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+};
+
+function ticketInfoParser (ticketData) {
+    ticketData = ticketData
+        .replace(/<soapenv:Envelope[\s\S]*?<xsd:element/, '') // Убираем начало SOAP-обертки
+        .replace(/\/>\s*<\/soapenv:Body>\s*<\/soapenv:Envelope>/, ''); // Убираем конец SOAP-обертки
+    ticketData = Object.fromEntries(
+        ticketData
+            .trim()
+            .split("\n")
+            .map(line => {
+                const match = line.match(/(\w+)='(.*)'/);
+                return match ? [match[1], match[2]] : null;
+            })
+            .filter(Boolean)
+    );
+    return ticketData;
+}
+
+const checkTicketState = (methodData) => async (req, res) => {
+    // Устанавливаем заголовки для SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    // Функция для отправки данных
+    const sendData = async () => {
+        try {
+            // Получаем список билетов для сегодняшнего дня
+            let data;
+            const ticketInfo = await getTicketInfo(methodData(req.query.eventId, req.query.branchId));
+            const parsedTicketInfo = ticketInfoParser(ticketInfo);
+            // res.json(parsedTicketList);
+            const stateActionMap = {
+                'INSERVICE': (parsedTicketInfo.ServTime == 0) ? 'WAIT' : 'CALLING',
+                'MISSED': 'MISSED',
+                'WAIT': 'RESCHEDULLED',
+                'DELAYED': 'DELAYED',
+                'NEW': 'INQUEUE',
+                'COMPLETED': 'COMPLETED'
+            };
+            
+            const state = parsedTicketInfo.State;
+            const action = stateActionMap[state] || null; // Возвращаем null, если состояние не найдено в маппинге
+            
+            data = null;
+            
+            if (action) {
+                data = { 
+                    state: state,
+                    action: action
+                };
+            }
+            
+            
+            // Отправляем данные как событие SSE
+            res.write(`data: ${JSON.stringify(data)}\n\n`);
+        } catch (error) {
+            console.error('Ошибка при получении данных для SSE:', error);
+        }
+    };
+
+    // Отправляем данные сразу при подключении
+    sendData();
+
+    // Устанавливаем интервал для отправки данных каждые 30 секунд
+    const interval = setInterval(sendData, 5000);
+    
+    // Закрываем соединение при завершении подключения клиента
+    req.on('close', () => {
+        clearInterval(interval);
+        res.end();
+    });
+    // res.json(parsedTicketInfo);
+}
+
+export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState };
