@@ -4,8 +4,8 @@ import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 
 const url = {
-    operator: 'http://192.168.101.3:3856?wsdl',
-    terminal: 'http://192.168.101.3:3857?wsdl'
+    operator: 'http://10.10.111.87:3856?wsdl',
+    terminal: 'http://10.10.111.87:3857?wsdl'
 };
 
 async function availableOperators(methodData) {
