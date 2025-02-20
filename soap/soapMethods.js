@@ -150,7 +150,22 @@ const soapMethods = {
                 xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
             }
         }
-    }
+    },
+    NomadTerminalTicketRatingOrder: (orderId, rating) => ({
+        name: 'NomadTerminalTicketRatingOrder',
+        args: {
+            'cus:NomadTerminalTicketRatingOrder_Input': {
+                'cus:EventRatingOrder': orderId,
+                'cus:Rating': rating
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
+    })
 };
 
 export default soapMethods;

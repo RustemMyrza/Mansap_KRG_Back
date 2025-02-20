@@ -4,8 +4,8 @@ import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 
 const url = {
-    operator: 'http://10.10.111.98:3856?wsdl',
-    terminal: 'http://10.10.111.98:3857?wsdl'
+    operator: 'http://10.10.111.87:3856?wsdl',
+    terminal: 'http://10.10.111.87:3857?wsdl'
 };
 
 async function availableOperators(methodData) {
@@ -380,4 +380,31 @@ const checkRedirectedTicket = (eventMethodData, allTicketMethodData) => async (r
     }
 }
 
-export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState, checkRedirectedTicket };
+async function rateService (methodData) {
+    try {
+        const terminalClient = await getSoapClient(url.terminal);
+
+        if (!terminalClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            throw new Error('SOAP method not found');
+        }
+
+        return new Promise((resolve, reject) => { // ✅ Возвращаем новый Promise
+            terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const parsedResponse = parseXml(rawResponse);
+                resolve(parsedResponse); // ✅ Возвращаем результат
+            });
+        });
+    } catch (error) {
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+}
+
+export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState, checkRedirectedTicket, rateService };

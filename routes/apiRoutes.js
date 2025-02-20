@@ -2,6 +2,7 @@ import express from "express";
 import apiController from "../controllers/soapController.js";
 import soapMethods from "../soap/soapMethods.js";
 import responseHandlers from '../utils/responseHandlers.js';
+import requestToDB from '../db/dbconnect.js';
 import { parseXml, parseXMLtoJSON } from '../xmlParser.js';
 
 const router = express.Router();
@@ -93,6 +94,17 @@ router.get('/get-all-ticket', async (req, res) => {
 })
 
 router.get('/get-ticket-status', apiController.checkTicketState(soapMethods.NomadEvent_Info))
+router.post('/service-rate', async (req, res) => {
+    const eventId = req.body.eventId;
+    const rating = req.body.rating;
+    const sqlRequestResult = await requestToDB(`SELECT F_ORDER_NUM FROM t_g_event WHERE F_ID = '${eventId}'`);
+    const orderId = sqlRequestResult[0].F_ORDER_NUM;
+    const parsedXMLResult = await apiController.rateService(soapMethods.NomadTerminalTicketRatingOrder(orderId, rating));
+    const result = parsedXMLResult['soapenv:Envelope']['soapenv:Body'][0];
+    res.json({
+        message: result
+    });
+});
 // router.get('/ticket/info', async (req, res) => {
 //     const eventId = req.query.eventid;
 //     const branchId = req.query.branchid;
@@ -138,5 +150,13 @@ router.post('/request/get-ticket', async (req, res) => {
 });
 
 router.get('/get-redirected-ticket', apiController.checkRedirectedTicket(soapMethods.NomadEvent_Info, soapMethods.NomadAllTicketList));
-
+router.get('/get-ticket-info', async (req, res) => {
+    console.log('req.query', req.query);
+    const eventId = req.query.eventId;
+    const branchId = req.query.branchId;
+    const XMLResult = await apiController.getTicketInfo(soapMethods.NomadEvent_Info(eventId, branchId));
+    const parsedXMLResult = parseXml(XMLResult);
+    const parsedTicketData = await responseHandlers.ticketInfo(parsedXMLResult);
+    console.log('parsedTicketData:', parsedTicketData);
+})
 export default router;
