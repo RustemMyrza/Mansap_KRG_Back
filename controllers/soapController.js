@@ -4,8 +4,8 @@ import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 
 const url = {
-    operator: 'http://10.10.111.87:3856?wsdl',
-    terminal: 'http://10.10.111.87:3857?wsdl'
+    operator: 'http://10.10.111.98:3856?wsdl',
+    terminal: 'http://10.10.111.98:3857?wsdl'
 };
 
 async function availableOperators(methodData) {
@@ -311,10 +311,11 @@ const checkTicketState = (methodData) => async (req, res) => {
             // Получаем список билетов для сегодняшнего дня
             let data;
             const ticketInfo = await getTicketInfo(methodData(req.query.eventId, req.query.branchId));
-            const parsedTicketInfo = ticketInfoParser(ticketInfo);
+            const parsedTicketInfo = parseXml(ticketInfo);
+            const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
             // res.json(parsedTicketList);
             const stateActionMap = {
-                'INSERVICE': (parsedTicketInfo.ServTime == 0) ? 'WAIT' : 'CALLING',
+                'INSERVICE': (objectTicketInfo.ServTime == 0) ? 'WAIT' : 'CALLING',
                 'MISSED': 'MISSED',
                 'WAIT': 'RESCHEDULLED',
                 'DELAYED': 'DELAYED',
@@ -322,7 +323,7 @@ const checkTicketState = (methodData) => async (req, res) => {
                 'COMPLETED': 'COMPLETED'
             };
             
-            const state = parsedTicketInfo.State;
+            const state = objectTicketInfo.State;
             const action = stateActionMap[state] || null; // Возвращаем null, если состояние не найдено в маппинге
             
             data = null;
@@ -354,6 +355,29 @@ const checkTicketState = (methodData) => async (req, res) => {
         res.end();
     });
     // res.json(parsedTicketInfo);
+};
+
+
+const checkRedirectedTicket = (eventMethodData, allTicketMethodData) => async (req, res) => {
+    try {
+        const branchId = req.query.branchId;
+        const eventId = req.query.eventId;
+        const xmlTicketInfo = await getTicketInfo(eventMethodData(eventId, branchId));
+        const parsedTicketInfo = parseXml(xmlTicketInfo);
+        const structuredTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
+
+        const xmlAllTicketData = await ticketList(allTicketMethodData);
+        const structuredNewTicketData = responseHandlers.newTicketList(xmlAllTicketData);
+        if (structuredNewTicketData.length > 0) {
+            const redirectedTicket = responseHandlers.redirectedTicket(structuredNewTicketData, structuredTicketInfo);
+            res.json(redirectedTicket);
+        } else {
+            res.json(null);
+        }
+    } catch (error) {
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
 }
 
-export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState };
+export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState, checkRedirectedTicket };

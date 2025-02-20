@@ -6,7 +6,7 @@ export default async function requestToDB(request) {
     connection = await mysql.createConnection({
       host: 'localhost',
       user: 'root',
-      password: 'root',
+      password: 'root_4155',
       database: 'central_enpf',
       charset: 'utf8mb4'
     });

@@ -137,4 +137,6 @@ router.post('/request/get-ticket', async (req, res) => {
     }
 });
 
+router.get('/get-redirected-ticket', apiController.checkRedirectedTicket(soapMethods.NomadEvent_Info, soapMethods.NomadAllTicketList));
+
 export default router;

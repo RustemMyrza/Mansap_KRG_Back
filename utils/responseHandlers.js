@@ -60,8 +60,9 @@ const responseHandlers = {
         return structuredTicketData;
     },
 
-    ticketInfo: (ticketInfo) => {
-        const parsedTicketInfo = ticketInfo['soapenv:Envelope'];
+    ticketInfo: async (ticketInfo) => {
+        ticketInfo = await ticketInfo;
+        const parsedTicketInfo = ticketInfo['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTicketInfo'][0]['xsd:element'][0]['$'];
         return parsedTicketInfo;
     },
     branchList: (xmlBranchList) => {
@@ -88,6 +89,15 @@ const responseHandlers = {
     ticketList: (xmlTicketList) => {
         const ticketList = xmlTicketList["soapenv:Envelope"]["soapenv:Body"][0]["cus:NomadAllTicketList"][0]["xsd:complexType"][1]["xsd:element"];
         return ticketList;
+    },
+    redirectedTicket: (newTicketList, ticketInfo) => {
+        console.log('newTicketList:', newTicketList);
+        const redirectedTicket = newTicketList.find(ticket => (
+            ticket.TicketNo == ticketInfo.TicketNo &&
+            ticket.Redirected == "true" &&
+            ticket.AdditionalStatus == "2"
+        ));
+        return redirectedTicket || null;
     }
 }
 
