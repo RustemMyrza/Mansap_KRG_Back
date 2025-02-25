@@ -3,7 +3,8 @@ import apiController from "../controllers/soapController.js";
 import soapMethods from "../soap/soapMethods.js";
 import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
-import { parseXml, parseXMLtoJSON } from '../xmlParser.js';
+import { parseXml } from '../xmlParser.js';
+import writeToLog from "../Log/toLog.js";
 
 const router = express.Router();
 

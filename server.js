@@ -3,13 +3,14 @@ import soap from 'soap';
 import cors from 'cors';
 import xml2js from 'xml2js';
 import apiRoutes from './routes/apiRoutes.js';
+import videoServer from './routes/route.js';
 
 const app = express();
 const port = 3001;
 
 app.use(cors());
 app.use('/api', apiRoutes);
-
+app.use('/', videoServer);
 // app.get('/get-soap-data', async (req, res) => {
 //     const url = 'http://10.10.111.85:3856?wsdl';
 
@@ -67,6 +68,6 @@ app.use('/api', apiRoutes);
 //     });
 // });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${port}`);
 });

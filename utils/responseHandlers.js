@@ -1,3 +1,5 @@
+import writeToLog from "../Log/toLog.js";
+
 const responseHandlers = {
     serviceList: (data) => {
         const services = data['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadOperatorQueueList'][0]['xsd:complexType'][1]['xsd:element'];
