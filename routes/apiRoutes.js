@@ -157,6 +157,6 @@ router.get('/get-ticket-info', async (req, res) => {
     const XMLResult = await apiController.getTicketInfo(soapMethods.NomadEvent_Info(eventId, branchId));
     const parsedXMLResult = parseXml(XMLResult);
     const parsedTicketData = await responseHandlers.ticketInfo(parsedXMLResult);
-    console.log('parsedTicketData:', parsedTicketData);
+    res.json(parsedTicketData);
 })
 export default router;

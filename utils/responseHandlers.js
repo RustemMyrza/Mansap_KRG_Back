@@ -48,7 +48,6 @@ const responseHandlers = {
 
     getTicket: (data) => {
         const ticketData = data['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalEvent_Now'][0];
-        console.log('ticketData:', ticketData);
         const structuredTicketData = ({
             eventId: ticketData['cus:eventId'][0],
             ticketNo: ticketData['cus:TicketNo'][0],
@@ -63,6 +62,7 @@ const responseHandlers = {
     ticketInfo: async (ticketInfo) => {
         ticketInfo = await ticketInfo;
         const parsedTicketInfo = ticketInfo['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTicketInfo'][0]['xsd:element'][0]['$'];
+        console.log('ticketInfo[soapenv:Envelope][soapenv:Body][0][cus:NomadTicketInfo]', ticketInfo['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTicketInfo']);
         return parsedTicketInfo;
     },
     branchList: (xmlBranchList) => {
@@ -77,8 +77,9 @@ const responseHandlers = {
     },
     newTicketList: (xmlTicketList) => {
         const ticketList = xmlTicketList["soapenv:Envelope"]["soapenv:Body"][0]["cus:NomadAllTicketList"][0]["xsd:complexType"][1]["xsd:element"];
+        console.log('ticketList:', ticketList);
         const structuredTicketList = ticketList
-            .filter(ticket => ticket['$']['State'] == 'NEW')
+            .filter(ticket => ["NEW", "INSERVICE"].includes(ticket['$']['State']))
             .map(ticket => {
                 ticket = ticket['$'];
                 return ticket;

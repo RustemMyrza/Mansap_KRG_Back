@@ -4,8 +4,8 @@ import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 
 const url = {
-    operator: 'http://10.10.111.87:3856?wsdl',
-    terminal: 'http://10.10.111.87:3857?wsdl'
+    operator: 'http://192.168.101.3:3856?wsdl',
+    terminal: 'http://192.168.101.3:3857?wsdl'
 };
 
 async function availableOperators(methodData) {
@@ -186,7 +186,7 @@ async function getTicketInfo(methodData) {
 
                 if (err && !rawResponse) {
                     // Ошибка без полезного ответа – отклоняем промис
-                    console.error(`[${new Date().toISOString()}] Критическая ошибка SOAP:`, err);
+                    // console.error(`[${new Date().toISOString()}] Критическая ошибка SOAP:`, err);
                     return reject(err);
                 }
 
@@ -372,7 +372,10 @@ const checkRedirectedTicket = (eventMethodData, allTicketMethodData) => async (r
             const redirectedTicket = responseHandlers.redirectedTicket(structuredNewTicketData, structuredTicketInfo);
             res.json(redirectedTicket);
         } else {
-            res.json(null);
+            res.status(400).json({
+                success: false,
+                message: "Ticket did not redirected"
+            });
         }
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
