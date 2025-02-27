@@ -8,8 +8,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const url = {
-    operator: `http://${process.env.OPERATOR_WSDL_IP}?wsdl`,
-    terminal: `http://${process.env.TERMINAL_WSDL_IP}?wsdl`
+    operator: `http://${process.env.OPERATOR_WSDL}?wsdl`,
+    terminal: `http://${process.env.TERMINAL_WSDL}?wsdl`
 };
 
 async function availableOperators(methodData) {
