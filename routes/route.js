@@ -6,11 +6,10 @@ const router = express.Router();
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-router.all('/', (req, res) => {
-    if (req) {
-        writeToLog('request was gotten');
-    }
+router.all('*', (req, res) => {
+    console.log(`Request method: ${req.method}`);
+    writeToLog('request was gotten');
     res.send('Request received and logged.');
-})
+});
 
 export default router;

@@ -3,10 +3,13 @@ import { parseXml } from '../xmlParser.js';
 import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 import writeToLog from '../Log/toLog.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const url = {
-    operator: 'http://10.10.111.87:3856?wsdl',
-    terminal: 'http://10.10.111.87:3857?wsdl'
+    operator: `http://${process.env.OPERATOR_WSDL_IP}?wsdl`,
+    terminal: `http://${process.env.TERMINAL_WSDL_IP}?wsdl`
 };
 
 async function availableOperators(methodData) {
