@@ -12,6 +12,10 @@ const url = {
     terminal: `http://${process.env.TERMINAL_WSDL}?wsdl`
 };
 
+const clients = [];
+const ticketStatusCache = {}; // Глобальный кэш статусов билетов
+
+
 async function availableOperators(methodData) {
     try {
         const operatorClient = await getSoapClient(url.operator);
@@ -304,61 +308,65 @@ function ticketInfoParser (ticketData) {
 }
 
 const checkTicketState = (methodData) => async (req, res) => {
-    // Устанавливаем заголовки для SSE
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+
+    clients.push(res);
     
-    // Функция для отправки данных
-    const sendData = async () => {
-        try {
-            // Получаем список билетов для сегодняшнего дня
-            let data;
-            const ticketInfo = await getTicketInfo(methodData(req.query.eventId, req.query.branchId));
-            const parsedTicketInfo = parseXml(ticketInfo);
-            const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
-            // res.json(parsedTicketList);
-            const stateActionMap = {
-                'INSERVICE': (objectTicketInfo.ServTime == 0) ? 'WAIT' : 'CALLING',
-                'MISSED': 'MISSED',
-                'WAIT': 'RESCHEDULLED',
-                'DELAYED': 'DELAYED',
-                'NEW': 'INQUEUE',
-                'COMPLETED': 'COMPLETED'
-            };
-            
-            const state = objectTicketInfo.State;
-            const action = stateActionMap[state] || null; // Возвращаем null, если состояние не найдено в маппинге
-            
-            data = null;
-            
-            if (action) {
-                data = { 
-                    state: state,
-                    action: action
-                };
-            }
-            
-            
-            // Отправляем данные как событие SSE
-            res.write(`data: ${JSON.stringify(data)}\n\n`);
-        } catch (error) {
-            console.error('Ошибка при получении данных для SSE:', error);
+    const interval = setInterval(async () => {
+        const status = await sendTicketStatus(req.query.eventId, req.query.branchId, methodData);
+
+        // Останавливаем интервал, если статус CALLING
+        if (status && status.action === 'CALLING') {
+            clearInterval(interval);
+            clients.splice(clients.indexOf(res), 1);
+            res.end();
         }
-    };
+    }, 5000);
 
-    // Отправляем данные сразу при подключении
-    sendData();
-
-    // Устанавливаем интервал для отправки данных каждые 30 секунд
-    const interval = setInterval(sendData, 5000);
-    
-    // Закрываем соединение при завершении подключения клиента
     req.on('close', () => {
         clearInterval(interval);
+        clients.splice(clients.indexOf(res), 1);
         res.end();
     });
-    // res.json(parsedTicketInfo);
+};
+
+
+export const sendTicketStatus = async (eventId, branchId, methodData, call = null) => {
+    try {
+        let action = null;
+        const ticketInfo = await getTicketInfo(methodData(eventId, branchId));
+        const parsedTicketInfo = parseXml(ticketInfo);
+        const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
+
+        const stateActionMap = {
+            'INSERVICE': call ? 'CALLING' : 'WAIT',
+            'MISSED': 'MISSED',
+            'WAIT': 'RESCHEDULLED',
+            'DELAYED': 'DELAYED',
+            'NEW': 'INQUEUE',
+            'COMPLETED': 'COMPLETED'
+        };
+
+        const state = objectTicketInfo.State;
+        if (call) {
+            action = 'CALLING';
+        } else {
+            action = stateActionMap[state] || null;
+        }
+
+        const data = action ? { state, action } : null;
+
+        if (data) {
+            ticketStatusCache[eventId] = { state: data.state, action: data.action, timestamp: Date.now() };
+            clients.forEach(client => {
+                client.write(`data: ${JSON.stringify(data)}\n\n`);
+            });
+        }
+    } catch (error) {
+        console.error('Ошибка при отправке данных SSE:', error);
+    }
 };
 
 
@@ -414,4 +422,4 @@ async function rateService (methodData) {
     }
 }
 
-export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState, checkRedirectedTicket, rateService };
+export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState, checkRedirectedTicket, rateService, sendTicketStatus };
