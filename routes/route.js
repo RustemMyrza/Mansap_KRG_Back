@@ -6,10 +6,20 @@ const router = express.Router();
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-router.all('*', (req, res) => {
-    console.log(`Request method: ${req.method}`);
-    writeToLog('request was gotten');
-    res.send('Request received and logged.');
+router.get("*", (req, res) => {
+    const { branchId, window, eventId } = req.query;
+
+    // Проверяем, переданы ли параметры
+    if (!branchId || !window || !eventId) {
+        return res.status(400).json({ error: "Missing required query parameters" });
+    }
+
+    // Отвечаем клиенту
+    writeToLog('Request was getting');
+    res.status(200).json({
+        message: "Request received successfully",
+        receivedQuery: { branchId, window, eventId },
+    });
 });
 
 export default router;
