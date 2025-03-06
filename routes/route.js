@@ -41,8 +41,6 @@ router.get("*", async (req, res) => {
     try {
         const ticketList = await allTicketList();
         const callingTicket = getCorrectTicket(ticketList, { branchId, window, eventId });
-        
-        writeToLog(JSON.stringify(callingTicket));
 
         state.requestCount += 1;
 
