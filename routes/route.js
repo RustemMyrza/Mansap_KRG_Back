@@ -1,5 +1,5 @@
 import express from "express";
-import { sendTicketStatus } from "../controllers/soapController.js";
+import { sendTicketStatus, state } from "../controllers/soapController.js";
 import apiController from "../controllers/soapController.js";
 import responseHandlers from '../utils/responseHandlers.js';
 import soapMethods from "../soap/soapMethods.js";
@@ -34,20 +34,29 @@ function getCorrectTicket(ticketList, { branchId, window, eventId }) {
 router.get("*", async (req, res) => {
     const { branchId, window, eventId } = req.query;
 
-    // Проверяем, переданы ли параметры
     if (!branchId || !window || !eventId) {
         return res.status(400).json({ error: "Missing required query parameters" });
     }
+
     try {
         const ticketList = await allTicketList();
         const callingTicket = getCorrectTicket(ticketList, { branchId, window, eventId });
+        
         writeToLog(JSON.stringify(callingTicket));
+
+        state.requestCount += 1;
+
+        if (state.requestCount === 2) {
+            state.lever = true;
+        }
+
         sendTicketStatus(
             callingTicket['$']['EventId'],
             branchId,
             soapMethods.NomadEvent_Info,
             callingTicket
-        )
+        );
+
         res.status(200).json({
             message: "Request received successfully",
             receivedQuery: { branchId, window, eventId },
@@ -57,6 +66,7 @@ router.get("*", async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
 
 
 

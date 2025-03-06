@@ -14,6 +14,7 @@ const url = {
 
 const clients = [];
 const ticketStatusCache = {}; // Глобальный кэш статусов билетов
+export const state = { lever: false, requestCount: 0 };
 
 
 async function availableOperators(methodData) {
@@ -316,16 +317,11 @@ const checkTicketState = (methodData) => async (req, res) => {
     
     const interval = setInterval(async () => {
         const status = await sendTicketStatus(req.query.eventId, req.query.branchId, methodData);
-
-        // Останавливаем интервал, если статус CALLING
-        if (status && status.action === 'CALLING') {
-            clearInterval(interval);
-            clients.splice(clients.indexOf(res), 1);
-            res.end();
-        }
     }, 5000);
 
     req.on('close', () => {
+        state.lever = false;
+        state.requestCount = 0;
         clearInterval(interval);
         clients.splice(clients.indexOf(res), 1);
         res.end();
@@ -341,7 +337,7 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
         const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
 
         const stateActionMap = {
-            'INSERVICE': call ? 'CALLING' : 'WAIT',
+            'INSERVICE': state.lever ? 'CALLING' : 'WAIT',
             'MISSED': 'MISSED',
             'WAIT': 'RESCHEDULLED',
             'DELAYED': 'DELAYED',
@@ -349,14 +345,10 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
             'COMPLETED': 'COMPLETED'
         };
 
-        const state = objectTicketInfo.State;
-        if (call) {
-            action = 'CALLING';
-        } else {
-            action = stateActionMap[state] || null;
-        }
+        const ticketState = objectTicketInfo.State;
+        action = stateActionMap[ticketState] || null;
 
-        const data = action ? { state, action } : null;
+        const data = action ? { ticketState, action } : null;
 
         if (data) {
             ticketStatusCache[eventId] = { state: data.state, action: data.action, timestamp: Date.now() };
@@ -368,6 +360,7 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
         console.error('Ошибка при отправке данных SSE:', error);
     }
 };
+
 
 
 const checkRedirectedTicket = (eventMethodData, allTicketMethodData) => async (req, res) => {
