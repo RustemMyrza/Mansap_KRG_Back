@@ -346,9 +346,11 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
         };
 
         const ticketState = objectTicketInfo.State;
+        const windowNum = objectTicketInfo.WindowNum;
+        
         action = stateActionMap[ticketState] || null;
 
-        const data = action ? { ticketState, action } : null;
+        const data = action === 'CALLING' ? { ticketState, action, windowNum } : { ticketState, action };
 
         if (data) {
             ticketStatusCache[eventId] = { state: data.state, action: data.action, timestamp: Date.now() };
