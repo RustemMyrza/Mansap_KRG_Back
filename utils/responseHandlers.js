@@ -41,11 +41,16 @@ const responseHandlers = {
 
     availableOperators: (operatorList) => {
         const operators = operatorList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadOperatorList'][0]['xsd:complexType'][1]['xsd:element'];
-        const structuredOperators = operators.map(operator => ({
-            operatorId: operator['$']['operatorId'],
-            name: operator['$']['workName']
-        }))
-        return structuredOperators;
+        if (typeof operators !== undefined) {
+            const structuredOperators = operators.map(operator => ({
+                operatorId: operator['$']['operatorId'],
+                name: operator['$']['workName']
+            }));
+            return structuredOperators;
+        } else {
+            writeToLog('operators === undefined');
+            return [];
+        }
     },
 
     getTicket: (data) => {
