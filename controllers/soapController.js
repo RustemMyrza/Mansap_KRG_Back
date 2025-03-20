@@ -100,19 +100,29 @@ const getBranchList = (methodData) => async (req, res) => {
         terminalClient[methodData.name](methodData.args, methodData.options, async (err, result, rawResponse) => {
             if (err) {
                 console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
-                return reject(err);
+                if (retryCount < MAX_RETRIES) {
+                    console.log(`Попытка ${retryCount + 1}/${MAX_RETRIES} через ${RETRY_DELAY / 1000} сек...`);
+                    setTimeout(() => getBranchList(methodData, retryCount + 1)(req, res), RETRY_DELAY);
+                    return;
+                }
+
+                res.status(500).json({ error: 'SOAP request failed', details: err.message });
+                return;
             }
 
             console.log(`[${new Date().toISOString()}] Ответ получен!`);
+            result.Branch = Array.isArray(result.Branch) ? result.Branch : [result.Branch];
+
             result.Branch = result.Branch.map(branch => {
                 let parsedName = parseName(branch.attributes.workName);
                 delete branch.attributes.workName;
                 branch.attributes = {
                     ...branch.attributes,
                     ...parsedName
-                }
+                };
                 return branch;
             });
+
             result.Branch.forEach(item => {
                 const node = { ...item.attributes, children: [] };
                 map.set(node.branchId, node);
@@ -128,7 +138,9 @@ const getBranchList = (methodData) => async (req, res) => {
                     }
                 }
             });
-            res.json(tree)
+
+            res.json(tree);
+
         });
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
