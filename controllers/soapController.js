@@ -194,16 +194,16 @@ async function getTicketInfo(methodData) {
     try {
         const terminalClient = await getSoapClient(url.terminal);
 
-        console.log("SOAP-клиент загружен:", terminalClient);
+        // console.log("SOAP-клиент загружен:", terminalClient);
 
         if (!terminalClient[methodData.name]) {
-            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            // console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
             throw new Error('SOAP method not found');
         }
 
         return new Promise((resolve, reject) => {
             terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
-                console.log("SOAP Response:", { err, result, rawResponse });
+                // console.log("SOAP Response:", { err, result, rawResponse });
 
                 if (err && !rawResponse) {
                     // Ошибка без полезного ответа – отклоняем промис
@@ -211,12 +211,12 @@ async function getTicketInfo(methodData) {
                     return reject(err);
                 }
 
-                console.warn(`[${new Date().toISOString()}] Ошибка SOAP, но есть данные:`, err);
+                // console.warn(`[${new Date().toISOString()}] Ошибка SOAP, но есть данные:`, err);
                 resolve(rawResponse || result);
             });
         });
     } catch (error) {
-        console.error("Ошибка при вызове SOAP-клиента:", error);
+        // console.error("Ошибка при вызове SOAP-клиента:", error);
         throw error;
     }
 }
@@ -429,4 +429,18 @@ async function rateService (methodData) {
     }
 }
 
-export default { getWebServiceList, getBranchList, availableOperators, getTicketInfo, getTicket, cancelTheQueue, branchWindowList, ticketInfoParser, ticketList, checkTicketState, checkRedirectedTicket, rateService, sendTicketStatus };
+export default { 
+    getWebServiceList, 
+    getBranchList, 
+    availableOperators, 
+    getTicketInfo, 
+    getTicket, 
+    cancelTheQueue, 
+    branchWindowList, 
+    ticketInfoParser, 
+    ticketList, 
+    checkTicketState, 
+    checkRedirectedTicket, 
+    rateService, 
+    sendTicketStatus 
+};

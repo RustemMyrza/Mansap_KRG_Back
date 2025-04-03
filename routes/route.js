@@ -3,6 +3,7 @@ import { sendTicketStatus, state } from "../controllers/soapController.js";
 import apiController from "../controllers/soapController.js";
 import responseHandlers from '../utils/responseHandlers.js';
 import soapMethods from "../soap/soapMethods.js";
+import redis from "../db/redisConnect.js";
 import writeToLog from "../Log/toLog.js";
 
 const router = express.Router();
@@ -30,6 +31,16 @@ function getCorrectTicket(ticketList, { branchId, window, eventId }) {
     );
 }
 
+async function isEventInQueue(eventId) {
+    const queue = await redis.lrange("queue", 0, -1); // Получаем все элементы списка
+  
+    return queue.some(item => {
+      const ticket = JSON.parse(item); // Разбираем JSON
+      return ticket.eventId === eventId; // Проверяем eventId
+    });
+  }
+  
+
 
 router.get("*", async (req, res) => {
     const { branchId, window, eventId } = req.query;
@@ -41,11 +52,23 @@ router.get("*", async (req, res) => {
     try {
         const ticketList = await allTicketList();
         const callingTicket = getCorrectTicket(ticketList, { branchId, window, eventId });
-
+        
         state.requestCount += 1;
 
         if (state.requestCount === 2) {
             state.lever = true;
+            if (!(await isEventInQueue(eventId))) {
+                await redis.lpush('queue', JSON.stringify({
+                    branchId: branchId,
+                    ticketNum: eventId,
+                    eventId: callingTicket['$']['EventId'],
+                    window: window,
+                    operatorId: callingTicket['$']['IdOperator']
+                }));
+                console.log("🎫 Новый талон добавлен в очередь");
+            } else {
+                console.log("⚠️ Талон с таким eventId уже есть в очереди");
+            }
         }
 
         sendTicketStatus(
