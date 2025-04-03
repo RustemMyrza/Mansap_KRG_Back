@@ -132,8 +132,8 @@ router.post('/request/get-ticket', async (req, res) => {
             req.body.queueId, 
             req.body.branchId
         ));
-        // const availableOperatorsList = responseHandlers.availableOperators(availableOperators)
-        // if (availableOperatorsList.length > 0) {
+        const availableOperatorsList = responseHandlers.availableOperators(availableOperators)
+        if (availableOperatorsList.length > 0) {
             const ticket = await apiController.getTicket(soapMethods.NomadTerminalEvent_Now2(
                 req.body.queueId,
                 req.body.iin,
@@ -143,9 +143,9 @@ router.post('/request/get-ticket', async (req, res) => {
             ));
             const ticketData = responseHandlers.getTicket(ticket);
             res.status(200).json(ticketData);
-        // } else {
-        //     throw new Error ('Нет подходящих операторов');
-        // }
+        } else {
+            throw new Error ('Нет подходящих операторов');
+        }
     } catch (error) {
         console.error("Ошибка в обработке запроса:", error);
         res.status(500).json({ success: false, error: error.message });

@@ -41,14 +41,13 @@ const responseHandlers = {
 
     availableOperators: (operatorList) => {
         const operators = operatorList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadOperatorList'][0]['xsd:complexType'][1]['xsd:element'];
-        if (typeof operators !== undefined) {
+        if (typeof operators !== "undefined") {
             const structuredOperators = operators.map(operator => ({
                 operatorId: operator['$']['operatorId'],
                 name: operator['$']['workName']
             }));
             return structuredOperators;
         } else {
-            writeToLog('operators === undefined');
             return [];
         }
     },
@@ -102,8 +101,7 @@ const responseHandlers = {
         console.log('newTicketList:', newTicketList);
         const redirectedTicket = newTicketList.find(ticket => (
             ticket.TicketNo == ticketInfo.TicketNo &&
-            ticket.Redirected == "true" &&
-            ticket.AdditionalStatus == "2"
+            ticket.Redirected == "true"
         ));
         return redirectedTicket || null;
     }
