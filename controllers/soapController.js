@@ -14,6 +14,8 @@ const url = {
 
 const clients = [];
 const ticketStatusCache = {}; // Глобальный кэш статусов билетов
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 3000;
 export const state = { lever: false, requestCount: 0 };
 
 
@@ -71,7 +73,7 @@ async function getTicket (methodData) {
     }
 }
 
-const getBranchList = (methodData) => async (req, res) => {
+const getBranchList = (methodData, retryCount = 0) => async (req, res) => {
     const tree = []
     const map = new Map();
 

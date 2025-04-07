@@ -32,15 +32,22 @@ function getCorrectTicket(ticketList, { branchId, window, eventId }) {
 }
 
 async function isEventInQueue(eventId) {
-    const queue = await redis.lrange("queue", 0, -1); // Получаем все элементы списка
+    const queue = await redis.lrange(eventId, 0, -1); // Получаем все элементы списка
   
     return queue.some(item => {
       const ticket = JSON.parse(item); // Разбираем JSON
       return ticket.eventId === eventId; // Проверяем eventId
     });
   }
-  
 
+async function makeQueue(queueId, branchId) {
+    const availableOperators = await apiController.availableOperators(soapMethods.NomadOperatorList(
+        queueId,
+        branchId
+    ));
+    const availableOperatorsList = responseHandlers.availableOperators(availableOperators);
+    writeToLog(availableOperatorsList);
+}
 
 router.get("*", async (req, res) => {
     const { branchId, window, eventId } = req.query;
@@ -52,13 +59,14 @@ router.get("*", async (req, res) => {
     try {
         const ticketList = await allTicketList();
         const callingTicket = getCorrectTicket(ticketList, { branchId, window, eventId });
-        
+        makeQueue(callingTicket['$']['IdQueue'], branchId);
         state.requestCount += 1;
 
         if (state.requestCount === 2) {
             state.lever = true;
             if (!(await isEventInQueue(eventId))) {
-                await redis.lpush('queue', JSON.stringify({
+
+                await redis.lpush(callingTicket['$']['EventId'], JSON.stringify({
                     branchId: branchId,
                     ticketNum: eventId,
                     eventId: callingTicket['$']['EventId'],
