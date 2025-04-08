@@ -4,6 +4,7 @@ import apiController from "../controllers/soapController.js";
 import responseHandlers from '../utils/responseHandlers.js';
 import soapMethods from "../soap/soapMethods.js";
 import redis from "../db/redisConnect.js";
+import requestToDB from "../db/dbconnect.js";
 import writeToLog from "../Log/toLog.js";
 
 const router = express.Router();
@@ -13,7 +14,7 @@ router.use(express.urlencoded({ extended: true }));
 
 async function allTicketList () {
     try {
-        const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList);
+        const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList('?'));
         const parsedTicketListToday = responseHandlers.ticketList(ticketListToday)
         return parsedTicketListToday;
     } catch (error) {
@@ -46,7 +47,27 @@ async function makeQueue(queueId, branchId) {
         branchId
     ));
     const availableOperatorsList = responseHandlers.availableOperators(availableOperators);
-    writeToLog(availableOperatorsList);
+    // let operatorsData = [];
+    let operatorsId = []
+    availableOperatorsList.forEach(operator => {
+        operatorsId.push(operator.operatorId);
+    });
+    let operatorsData = await requestToDB(`
+            SELECT t_g_operator.F_ID, F_NAME, F_SURNAME, F_LAST_SESSION, t_g_session.F_ID AS SESSION_ID FROM t_g_operator
+            INNER JOIN t_g_session
+            on t_g_operator.F_LAST_SESSION = t_g_session.F_START_TIME
+            WHERE t_g_operator.F_ID IN ('${operatorsId.join(', ')}');
+        `);
+    
+    for (let operator of operatorsData) {
+        try {
+            const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList(operator.SESSION_ID));
+            const parsedTicketListToday = responseHandlers.ticketList(ticketListToday)
+            writeToLog(parsedTicketListToday);
+        } catch (error) {
+            console.error("Ошибка при обработке запроса:", error);
+        }
+    }
 }
 
 router.get("*", async (req, res) => {

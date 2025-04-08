@@ -50,7 +50,7 @@ router.get('/get-count-queue-people', async (req, res) => {
         const sendData = async () => {
             try {
                 // Получаем список билетов для сегодняшнего дня
-                const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList);
+                const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList('?'));
                 const parsedTicketList = responseHandlers.newTicketList(ticketListToday);
                 // res.json(parsedTicketList);
                 const indexOfTicket = parsedTicketList.findIndex(ticket => ticket['EventId'] == eventId);
@@ -85,7 +85,7 @@ router.get('/get-count-queue-people', async (req, res) => {
 
 router.get('/get-all-ticket', async (req, res) => {
     try {
-        const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList);
+        const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList('?'));
         const parsedTicketListToday = responseHandlers.ticketList(ticketListToday)
         res.json(parsedTicketListToday);
     } catch (error) {
@@ -152,7 +152,7 @@ router.post('/request/get-ticket', async (req, res) => {
     }
 });
 
-router.get('/get-redirected-ticket', apiController.checkRedirectedTicket(soapMethods.NomadEvent_Info, soapMethods.NomadAllTicketList));
+router.get('/get-redirected-ticket', apiController.checkRedirectedTicket(soapMethods.NomadEvent_Info, soapMethods.NomadAllTicketList('?')));
 router.get('/get-ticket-info', async (req, res) => {
     console.log('req.query', req.query);
     const eventId = req.query.eventId;

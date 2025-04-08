@@ -431,6 +431,33 @@ async function rateService (methodData) {
     }
 }
 
+async function operatorTicketList (methodData) {
+    try {
+        const operatorClient = await getSoapClient(url.operator);
+
+        if (!operatorClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+            return res.status(500).json({ error: 'SOAP method not found' });
+        }
+        return new Promise((resolve, reject) => {
+            operatorClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+    
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const xmlData = parseXml(rawResponse);
+                resolve(xmlData);
+            });
+        })
+
+    } catch (error) {        
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+}
+
 export default { 
     getWebServiceList, 
     getBranchList, 
@@ -444,5 +471,6 @@ export default {
     checkTicketState, 
     checkRedirectedTicket, 
     rateService, 
-    sendTicketStatus 
+    sendTicketStatus,
+    operatorTicketList
 };

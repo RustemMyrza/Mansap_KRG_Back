@@ -57,6 +57,20 @@ const soapMethods = {
             }
         }
     }),
+    NomadTicketList: (sessionId) => ({
+        name: 'NomadTicketList',
+        args: {
+            'cus:NomadTicketList_Input': {
+                'cus:SessionIdTicket': sessionId
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
+    }),
     NomadTerminalEvent_Now2: (queueId, iin, phoneNum, branchId, local) => ({
         name: 'NomadTerminalEvent_Now2',
         args: {
@@ -137,11 +151,11 @@ const soapMethods = {
             }
         }
     }),
-    NomadAllTicketList: {
+    NomadAllTicketList: (sessionId) => ({
         name: 'NomadAllTicketList',
         args: {
             "cus:NomadAllTicketList_Input": {
-                "cus:SessionIdAllTicket": "?" // Укажи нужный SessionId
+                "cus:SessionIdAllTicket": sessionId // Укажи нужный SessionId
             }
         },
         options: {
@@ -150,7 +164,7 @@ const soapMethods = {
                 xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
             }
         }
-    },
+    }),
     NomadTerminalTicketRatingOrder: (orderId, rating) => ({
         name: 'NomadTerminalTicketRatingOrder',
         args: {
