@@ -41,35 +41,6 @@ async function isEventInQueue(eventId) {
     });
   }
 
-async function makeQueue(queueId, branchId) {
-    const availableOperators = await apiController.availableOperators(soapMethods.NomadOperatorList(
-        queueId,
-        branchId
-    ));
-    const availableOperatorsList = responseHandlers.availableOperators(availableOperators);
-    // let operatorsData = [];
-    let operatorsId = []
-    availableOperatorsList.forEach(operator => {
-        operatorsId.push(operator.operatorId);
-    });
-    let operatorsData = await requestToDB(`
-            SELECT t_g_operator.F_ID, F_NAME, F_SURNAME, F_LAST_SESSION, t_g_session.F_ID AS SESSION_ID FROM t_g_operator
-            INNER JOIN t_g_session
-            on t_g_operator.F_LAST_SESSION = t_g_session.F_START_TIME
-            WHERE t_g_operator.F_ID IN ('${operatorsId.join(', ')}');
-        `);
-    
-    for (let operator of operatorsData) {
-        try {
-            const ticketListToday = await apiController.ticketList(soapMethods.NomadAllTicketList(operator.SESSION_ID));
-            const parsedTicketListToday = responseHandlers.ticketList(ticketListToday)
-            writeToLog(parsedTicketListToday);
-        } catch (error) {
-            console.error("Ошибка при обработке запроса:", error);
-        }
-    }
-}
-
 router.get("*", async (req, res) => {
     const { branchId, window, eventId } = req.query;
 
@@ -80,22 +51,24 @@ router.get("*", async (req, res) => {
     try {
         const ticketList = await allTicketList();
         const callingTicket = getCorrectTicket(ticketList, { branchId, window, eventId });
-        makeQueue(callingTicket['$']['IdQueue'], branchId);
         state.requestCount += 1;
 
         if (state.requestCount === 2) {
             state.lever = true;
-            if (!(await isEventInQueue(eventId))) {
-
-                await redis.lpush(callingTicket['$']['EventId'], JSON.stringify({
+            if (!(await isEventInQueue(callingTicket['$']['EventId']))) {
+                writeToLog('yes');
+                await redis.rpush(branchId, JSON.stringify({
                     branchId: branchId,
                     ticketNum: eventId,
                     eventId: callingTicket['$']['EventId'],
                     window: window,
                     operatorId: callingTicket['$']['IdOperator']
                 }));
+
+                await client.lTrim(branchId, -20, -1);
                 console.log("🎫 Новый талон добавлен в очередь");
             } else {
+                writeToLog('no');
                 console.log("⚠️ Талон с таким eventId уже есть в очереди");
             }
         }

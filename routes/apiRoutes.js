@@ -162,4 +162,6 @@ router.get('/get-ticket-info', async (req, res) => {
     const parsedTicketData = await responseHandlers.ticketInfo(parsedXMLResult);
     res.json(parsedTicketData);
 })
+
+router.get('/get-video-server-data', apiController.getVideoServerData);
 export default router;

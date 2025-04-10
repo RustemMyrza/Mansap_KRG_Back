@@ -4,6 +4,7 @@ import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 import writeToLog from '../Log/toLog.js';
 import dotenv from 'dotenv';
+import redis from "../db/redisConnect.js";
 
 dotenv.config();
 
@@ -458,6 +459,37 @@ async function operatorTicketList (methodData) {
     }
 }
 
+const getVideoServerData = async (req, res) => {
+    const branchId = req.query.branchId;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const sendData = async () => {
+        try {
+            const ticketListJSON = await redis.lrange(branchId, 0, -1);
+            const ticketList = ticketListJSON.map(ticket => JSON.parse(ticket));
+
+            res.write(`data: ${JSON.stringify(ticketList)}\n\n`);
+        } catch (error) {
+            console.error(`Ошибка при получении данных с видеосервера: ${error}`);
+            res.write(`data: {"error": "Ошибка при получении данных с видеосервера"}\n\n`);
+        }
+    };
+
+    const intervalId = setInterval(sendData, 5000);
+
+    req.on('close', () => {
+        clearInterval(intervalId);
+        console.log('Клиент отключился от SSE');
+    });
+};
+
+
+
+
 export default { 
     getWebServiceList, 
     getBranchList, 
@@ -472,5 +504,6 @@ export default {
     checkRedirectedTicket, 
     rateService, 
     sendTicketStatus,
-    operatorTicketList
+    operatorTicketList,
+    getVideoServerData
 };
