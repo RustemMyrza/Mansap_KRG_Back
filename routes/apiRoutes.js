@@ -79,6 +79,7 @@ router.get('/get-count-queue-people', async (req, res) => {
         
     } catch (error) {
         console.error("Ошибка в обработке запроса:", error);
+        errorLog(error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -90,6 +91,7 @@ router.get('/get-all-ticket', async (req, res) => {
         res.json(parsedTicketListToday);
     } catch (error) {
         console.error("Ошибка в обработке запроса:", error);
+        errorLog(error);
         res.status(500).json({ success: false, error: error.message });
     }
 })
@@ -148,9 +150,39 @@ router.post('/request/get-ticket', async (req, res) => {
         }
     } catch (error) {
         console.error("Ошибка в обработке запроса:", error);
+        errorLog(error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
+router.post('/request/get-ticket', async (req, res) => {
+    try {
+        const availableOperators = await apiController.availableOperators(soapMethods.NomadOperatorList(
+            req.body.queueId, 
+            req.body.branchId
+        ));
+        const availableOperatorsList = responseHandlers.availableOperators(availableOperators)
+        // if (availableOperatorsList.length > 0) {
+            const ticket = await apiController.getTicket(soapMethods.NomadTerminalEvent_Now2(
+                req.body.queueId,
+                req.body.iin,
+                req.body.phoneNum,
+                req.body.branchId,
+                req.body.local
+            ));
+            const ticketData = responseHandlers.getTicket(ticket);
+            res.status(200).json(ticketData);
+        // } else {
+        //     throw new Error ('Нет подходящих операторов');
+        // }
+    } catch (error) {
+        console.error("Ошибка в обработке запроса:", error);
+        errorLog(error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.post('/request/get-ticket-sms', apiController.getSMS)
 
 router.get('/get-redirected-ticket', apiController.checkRedirectedTicket(soapMethods.NomadEvent_Info, soapMethods.NomadAllTicketList('?')));
 router.get('/get-ticket-info', async (req, res) => {

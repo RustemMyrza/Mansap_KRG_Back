@@ -7,6 +7,7 @@ const redis = new Redis({
 });
 
 redis.on("connect", () => console.log("🔗 Подключено к Redis"));
-redis.on("error", (err) => console.error("❌ Ошибка Redis:", err));
+// redis.on("error", (err) => console.error("❌ Ошибка Redis:", err));
+redis.on("error", () => {});
 
 export default redis;

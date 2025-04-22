@@ -56,7 +56,6 @@ router.get("*", async (req, res) => {
         if (state.requestCount === 2) {
             state.lever = true;
             if (!(await isEventInQueue(callingTicket['$']['EventId']))) {
-                writeToLog('yes');
                 await redis.rpush(branchId, JSON.stringify({
                     branchId: branchId,
                     ticketNum: eventId,
@@ -68,7 +67,6 @@ router.get("*", async (req, res) => {
                 await client.lTrim(branchId, -20, -1);
                 console.log("🎫 Новый талон добавлен в очередь");
             } else {
-                writeToLog('no');
                 console.log("⚠️ Талон с таким eventId уже есть в очереди");
             }
         }

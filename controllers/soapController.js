@@ -2,7 +2,8 @@ import { getSoapClient } from '../soap/soapClient.js';
 import { parseXml } from '../xmlParser.js';
 import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
-import writeToLog from '../Log/toLog.js';
+import sendSMS from '../sms-test.js';
+import errorLog from '../Log/errorLog.js';
 import dotenv from 'dotenv';
 import redis from "../db/redisConnect.js";
 
@@ -43,6 +44,7 @@ async function availableOperators(methodData) {
         });
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         throw error;
     }
 }
@@ -70,6 +72,7 @@ async function getTicket (methodData) {
         })
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         throw error;
     }
 }
@@ -147,6 +150,7 @@ const getBranchList = (methodData, retryCount = 0) => async (req, res) => {
         });
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         throw error;
     }
 }
@@ -220,6 +224,7 @@ async function getTicketInfo(methodData) {
         });
     } catch (error) {
         // console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         throw error;
     }
 }
@@ -248,6 +253,7 @@ async function cancelTheQueue (methodData) {
         })
     } catch (error) {        
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         throw error;
     }
 }
@@ -275,6 +281,7 @@ async function branchWindowList (methodData) {
 
     } catch (error) {        
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 };
@@ -302,6 +309,7 @@ async function ticketList (methodData) {
 
     } catch (error) {        
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 };
@@ -401,6 +409,7 @@ const checkRedirectedTicket = (eventMethodData, allTicketMethodData) => async (r
         }
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 }
@@ -428,6 +437,7 @@ async function rateService (methodData) {
         });
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 }
@@ -455,6 +465,7 @@ async function operatorTicketList (methodData) {
 
     } catch (error) {        
         console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
         res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 }
@@ -488,6 +499,32 @@ const getVideoServerData = async (req, res) => {
 };
 
 
+const getSMS = async (req, res) => {
+    const ticketNum = req.body.ticketNum;
+    const phone = req.body.phoneNum;
+    
+    try {
+        const result = await sendSMS({
+            user: process.env.SMS_USER,
+            pass: process.env.SMS_PASSWORD,
+            from: 'HUMO',
+            text: `Ваш талон ${ticketNum}. Пожалуйста, ожидайте вашей очереди.\n\nРақами навбатии шумо ${ticketNum} мебошад. Лутфан, навбати худро интизор шавед.`,
+            to: phone
+        });
+
+        res.status(result.statusCode).json({
+        message: 'Результат от SMS шлюза:',
+        ...JSON.parse(result.body)
+        });
+    } catch (error) {
+        res.status(500).json({
+        error: 'Ошибка при отправке SMS',
+        message: error.message
+        });
+    }
+}
+
+
 
 
 export default { 
@@ -505,5 +542,6 @@ export default {
     rateService, 
     sendTicketStatus,
     operatorTicketList,
-    getVideoServerData
+    getVideoServerData,
+    getSMS
 };
