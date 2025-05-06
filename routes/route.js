@@ -42,7 +42,7 @@ async function isEventInQueue(eventId) {
   }
 
 router.get("*", async (req, res) => {
-    const { branchId, window, eventId } = req.query;
+    const { branchId, window, eventId, local } = req.query;
 
     if (!branchId || !window || !eventId) {
         return res.status(400).json({ error: "Missing required query parameters" });
