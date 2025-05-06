@@ -6,6 +6,7 @@ import sendSMS from '../sms-test.js';
 import errorLog from '../Log/errorLog.js';
 import dotenv from 'dotenv';
 import redis from "../db/redisConnect.js";
+import { buildVoicePlayList, playPlaylist } from '../voice-bot.js';
 
 dotenv.config();
 
@@ -525,6 +526,10 @@ const getSMS = async (req, res) => {
 }
 
 
+const getVoice = async (req, res) => {
+    console.log(req.body);
+}
+
 
 
 export default { 
@@ -543,5 +548,6 @@ export default {
     sendTicketStatus,
     operatorTicketList,
     getVideoServerData,
-    getSMS
+    getSMS,
+    getVoice
 };

@@ -61,7 +61,8 @@ router.get("*", async (req, res) => {
                     ticketNum: eventId,
                     eventId: callingTicket['$']['EventId'],
                     window: window,
-                    operatorId: callingTicket['$']['IdOperator']
+                    operatorId: callingTicket['$']['IdOperator'],
+                    local: local
                 }));
 
                 await client.lTrim(branchId, -20, -1);
