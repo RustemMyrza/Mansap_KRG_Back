@@ -6,7 +6,7 @@ import sendSMS from '../sms-test.js';
 import errorLog from '../Log/errorLog.js';
 import dotenv from 'dotenv';
 import redis from "../db/redisConnect.js";
-import { buildVoicePlayList, playPlaylist } from '../voice-bot.js';
+import writeToLog from '../Log/toLog.js';
 
 dotenv.config();
 
@@ -130,18 +130,24 @@ const getBranchList = (methodData, retryCount = 0) => async (req, res) => {
                 return branch;
             });
 
+            const map = new Map();
+            const tree = [];
+
             result.Branch.forEach(item => {
                 const node = { ...item.attributes, children: [] };
                 map.set(node.branchId, node);
-                
-                if (node.parentId === "null") {
+            });
+
+            result.Branch.forEach(item => {
+                const node = map.get(item.attributes.branchId);
+                const parentId = item.attributes.parentId;
+            
+                if (parentId === "null") {
                     tree.push(node);
                 } else {
-                    const parent = map.get(node.parentId);
+                    const parent = map.get(parentId);
                     if (parent) {
                         parent.children.push(node);
-                    } else {
-                        map.set(node.parentId, { children: [node] });
                     }
                 }
             });
@@ -526,8 +532,34 @@ const getSMS = async (req, res) => {
 }
 
 
-const getVoice = async (req, res) => {
-    console.log(req.body);
+const removeEvent = async (req, res) => {
+    const eventId = req.query.eventId;
+    const branchId = req.query.branchId;
+
+    if (!eventId || !branchId) {
+        res.status(500).json({
+            error: 'Произошла ошибка с параметрами'
+        })
+    }
+
+    try {
+        const queueTickets = await redis.lrange(branchId, 0, -1);
+        for (const ticket of queueTickets) {
+            const parsedTicket = JSON.parse(ticket);
+            if (parsedTicket.eventId === eventId) {
+                await redis.lrem(branchId, 1, ticket)
+                break;
+            }
+        }
+        res.status(200).json({
+            message: 'Данные были успешно удалены с очереди'
+        })
+    } catch (error) {
+        res.status(500).json({
+            error: 'Ошибка при удалений с очереди Redis',
+            message: error.message
+        });
+    }
 }
 
 
@@ -549,5 +581,5 @@ export default {
     operatorTicketList,
     getVideoServerData,
     getSMS,
-    getVoice
+    removeEvent
 };

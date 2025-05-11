@@ -135,7 +135,7 @@ router.post('/request/get-ticket', async (req, res) => {
             req.body.branchId
         ));
         const availableOperatorsList = responseHandlers.availableOperators(availableOperators)
-        // if (availableOperatorsList.length > 0) {
+        if (availableOperatorsList.length > 0) {
             const ticket = await apiController.getTicket(soapMethods.NomadTerminalEvent_Now2(
                 req.body.queueId,
                 req.body.iin,
@@ -145,9 +145,9 @@ router.post('/request/get-ticket', async (req, res) => {
             ));
             const ticketData = responseHandlers.getTicket(ticket);
             res.status(200).json(ticketData);
-        // } else {
-        //     throw new Error ('Нет подходящих операторов');
-        // }
+        } else {
+            throw new Error ('Нет подходящих операторов');
+        }
     } catch (error) {
         console.error("Ошибка в обработке запроса:", error);
         errorLog(error);
@@ -196,5 +196,5 @@ router.get('/get-ticket-info', async (req, res) => {
 })
 
 router.get('/get-video-server-data', apiController.getVideoServerData);
-router.post('/get-video-server-audio', apiController.getVoice);
+router.delete('/remove-ticket-queue', apiController.removeEvent);
 export default router;
