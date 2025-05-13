@@ -1,0 +1,19 @@
+2025-05-13T13:20:12.715Z - Error: Нет подходящих операторов
+Error: Нет подходящих операторов
+    at file:///C:/Projects/Nomad/QR_mansap/back_express/routes/apiRoutes.js:137:19
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+2025-05-13T13:21:57.535Z - Error: Нет подходящих операторов
+Error: Нет подходящих операторов
+    at file:///C:/Projects/Nomad/QR_mansap/back_express/routes/apiRoutes.js:137:19
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+
+2025-05-13T16:30:47.507Z - Error: SOAP client creation failed: Error: connect ECONNREFUSED 192.168.101.5:3857
+Error: SOAP client creation failed: Error: connect ECONNREFUSED 192.168.101.5:3857
+    at file:///C:/Projects/Nomad/QR_mansap/back_express/soap/soapClient.js:10:31
+    at C:\Projects\Nomad\QR_mansap\back_express\node_modules\soap\lib\soap.js:105:9
+    at C:\Projects\Nomad\QR_mansap\back_express\node_modules\soap\lib\soap.js:55:24
+    at C:\Projects\Nomad\QR_mansap\back_express\node_modules\soap\lib\wsdl\index.js:1288:17
+    at C:\Projects\Nomad\QR_mansap\back_express\node_modules\soap\lib\http.js:213:20
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+

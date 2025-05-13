@@ -104,6 +104,10 @@ const responseHandlers = {
             ticket.Redirected == "true"
         ));
         return redirectedTicket || null;
+    },
+    eventCancel: (xmlCancelResult) => {
+        const resultData = xmlCancelResult['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalEvent_Output'][0];
+        return resultData;
     }
 }
 

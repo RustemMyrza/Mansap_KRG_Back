@@ -179,6 +179,21 @@ const soapMethods = {
                 xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
             }
         }
+    }),
+    NomadTerminalEventSimpleCancel: (branchId, iin) => ({
+        name: 'NomadTerminalEventSimpleCancel',
+        args: {
+            'cus:NomadTerminalEventSimpleCancel_Input': {
+                'cus:BranchId': branchId,
+                'cus:CancelIIN': iin
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
     })
 };
 
