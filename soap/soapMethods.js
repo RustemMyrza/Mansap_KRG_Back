@@ -13,6 +13,23 @@ const soapMethods = {
             }
         }
     },
+
+    NomadTerminalMenuList: (parentQueueId, branchId) =>  ({
+        name: 'NomadTerminalMenuList',
+        args:  {
+            "cus:NomadTerminalMenuList_Input": {
+                "cus:ParentQueueIdTerminal": parentQueueId,
+                "cus:BranchQueueId": branchId
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
+    }),
+
     NomadWebMenuList: {
         name: 'NomadWebMenuList',
         args:  {

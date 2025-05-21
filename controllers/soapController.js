@@ -156,47 +156,75 @@ const getBranchList = (methodData, retryCount = 0) => async (req, res) => {
     }
 }
 
-const getWebServiceList = () => async (req, res) => {
-    const tree = [];
-    const map = new Map();
+const getWebServiceList = (methodData) => async (req, res) => {
+    // const tree = [];
+    // const map = new Map();
 
-    function parseName(name) {
-        const parts = name.split(';');
-        const parsed = {};
+    // function parseName(name) {
+    //     const parts = name.split(';');
+    //     const parsed = {};
       
-        for (const part of parts) {
-          const [lang, value] = part.split('=');
-          if (lang && value) {
-            parsed[`name_${lang.toLowerCase()}`] = value.trim();
-          }
-        }
+    //     for (const part of parts) {
+    //       const [lang, value] = part.split('=');
+    //       if (lang && value) {
+    //         parsed[`name_${lang.toLowerCase()}`] = value.trim();
+    //       }
+    //     }
       
-        return parsed;
-    }
-    
-    let services = await requestToDB('SELECT F_ID, F_NAME, F_ID_PARENT FROM t_g_queue;');
-    services = services.map(service => ({
-        queueId: service.F_ID,
-        parentId: service.F_ID_PARENT,
-        visible: service.F_WEB_VISIBLE,
-        ...parseName(service.F_NAME)
-    }))
+    //     return parsed;
+    // }
 
-    services.forEach(item => {
-        map.set(item.queueId, { ...item, children: [] });
-    });
+    const xmlAvailableServiceList = await availableServiceList(methodData(req.query.queueId, req.query.branchId));
+    const parsedAvailableServiceList = responseHandlers.availableServiceList(xmlAvailableServiceList);
+    return res.status(200).json(parsedAvailableServiceList);
+    // let services = await requestToDB('SELECT F_ID, F_NAME, F_ID_PARENT FROM t_g_queue;');
+    // services = services.map(service => ({
+    //     queueId: service.F_ID,
+    //     parentId: service.F_ID_PARENT,
+    //     visible: service.F_WEB_VISIBLE,
+    //     ...parseName(service.F_NAME)
+    // }))
+
+    // services.forEach(item => {
+    //     map.set(item.queueId, { ...item, children: [] });
+    // });
     
-    // Формируем иерархию
-    services.forEach(item => {
-        if (map.has(item.parentId)) {
-            map.get(item.parentId).children.push(map.get(item.queueId));
-        } else {
-            tree.push(map.get(item.queueId));
-        }
-    });
-    return res.json(tree);
+    // // Формируем иерархию
+    // services.forEach(item => {
+    //     if (map.has(item.parentId)) {
+    //         map.get(item.parentId).children.push(map.get(item.queueId));
+    //     } else {
+    //         tree.push(map.get(item.queueId));
+    //     }
+    // });
+    // return res.json(tree);
 };
 
+async function availableServiceList (methodData) {
+    try {
+        const terminalClient = await getSoapClient(url.terminal);
+
+        if (!terminalClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+        }
+
+        return new Promise((resolve, reject) => { // ✅ Возвращаем новый Promise
+            terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const parsedResponse = parseXml(rawResponse);
+                resolve(parsedResponse); // ✅ Возвращаем результат
+            });
+        });
+
+    } catch (error) {
+        errorLog(error);
+    }
+}
 
 async function getTicketInfo(methodData) {
     try {

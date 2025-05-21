@@ -15,27 +15,58 @@ const responseHandlers = {
         return allStructuredServices;
     },
 
-    webServiceList: (webList, allData = null) => {
-        const webServices = webList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadWebMenuList'][0]['WebQueueList'];
-        
-        // console.log('allData:', allData);
-        const structuredWebServices = webServices.map(service => ({
-            queueId: service['$']['queueId'],
-            parentId: service['$']['parentId'],
-            workName: service['$']['workName'],
-            type: service['$']['type'],
-            children: []
-        }   ));
+    availableServiceList: (serviceList) => {
+        const services = serviceList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalMenuList'][0]['xsd:complexType'][1]['xsd:element'];
 
-        console.log('servicesMap:', servicesMap);
-        console.log(typeof servicesMap);
+        const transformedServices = services.map(service => {
+            const workNames = service["$"].workName.split(';').reduce((acc, item) => {
+                    const [lang, name] = item.split('=');
+                    if (lang && name) acc[lang.toLowerCase()] = name.trim();
+                    return acc;
+                }, {});
 
-        servicesMap.forEach(element => {
-            console.log('element:', element);
+                return {
+                    queueId: parseInt(service["$"].queueId, 10),
+                    parentId: parseInt(service["$"].parentId, 10),
+                    name_en: workNames['en'] || '',
+                    name_ru: workNames['ru'] || '',
+                    name_kz: workNames['kz'] || '',
+                    children: []
+                };
         });
 
-        console.log('servicesMap:', servicesMap);
+        // Построение дерева
+        function buildTree(items, rootId) {
+            const lookup = new Map();
+            const roots = [];
 
+            // Индексируем элементы по queueId
+            items.forEach(item => {
+                lookup.set(item.queueId, item);
+            });
+
+            // Привязываем дочерние элементы к родителям
+            items.forEach(item => {
+                if (item.parentId === rootId) {
+                    roots.push(item); // Корневой уровень
+                } else {
+                    const parent = lookup.get(item.parentId);
+                    if (parent) {
+                        parent.children.push(item);
+                    }
+                }
+            });
+
+            return roots;
+        }
+
+        const tree = [
+            {
+                "queueId": 1005,
+                "parentId": null,
+                "children": buildTree(transformedServices, 1005)
+            }
+        ]
         return tree;
     },
 

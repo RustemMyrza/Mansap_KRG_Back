@@ -13,7 +13,7 @@ const router = express.Router();
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-router.get('/web-service/list', apiController.getWebServiceList());
+router.get('/web-service/list', apiController.getWebServiceList(soapMethods.NomadTerminalMenuList));
 router.get('/branch/list', apiController.getBranchList(soapMethods.NomadTerminalBranchList));
 
 router.get('/get-count-queue-people', async (req, res) => {
