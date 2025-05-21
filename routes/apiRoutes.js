@@ -147,7 +147,6 @@ router.post('/request/get-ticket-sms', apiController.getSMS)
 
 router.get('/get-redirected-ticket', apiController.checkRedirectedTicket(soapMethods.NomadEvent_Info, soapMethods.NomadAllTicketList('?')));
 router.get('/get-ticket-info', async (req, res) => {
-    console.log('req.query', req.query);
     const eventId = req.query.eventId;
     const branchId = req.query.branchId;
     const XMLResult = await apiController.getTicketInfo(soapMethods.NomadEvent_Info(eventId, branchId));
@@ -170,12 +169,11 @@ router.delete('/cancel-event', async (req, res) => {
 
     const XMLResult = await apiController.eventCancel(soapMethods.NomadTerminalEventSimpleCancel(req.query.branchId, req.query.iin))
     const parsedResultData = await responseHandlers.eventCancel(XMLResult);
-
+    console.log(parsedResultData);
     if (
         Number(parsedResultData['cus:IsCanceled'][0]) === 1 && 
-        parsedResultData['cus:NewPinCode'][0] === iin
+        parsedResultData['cus:IIN'][0] === iin
     ) {
-        writeToLog(parsedResultData);
         res.status(200).json({
             success: true,
             branchId: branchId,
