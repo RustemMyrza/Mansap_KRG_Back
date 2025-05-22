@@ -17,23 +17,36 @@ const responseHandlers = {
 
     availableServiceList: (serviceList) => {
         const services = serviceList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalMenuList'][0]['xsd:complexType'][1]['xsd:element'];
+        if (services) {
+            const transformedServices = services.map(service => {
+                const workNames = service["$"].workName.split(';').reduce((acc, item) => {
+                        const [lang, name] = item.split('=');
+                        if (lang && name) acc[lang.toLowerCase()] = name.trim();
+                        return acc;
+                    }, {});
 
-        const transformedServices = services.map(service => {
-            const workNames = service["$"].workName.split(';').reduce((acc, item) => {
-                    const [lang, name] = item.split('=');
-                    if (lang && name) acc[lang.toLowerCase()] = name.trim();
-                    return acc;
-                }, {});
+                    return {
+                        queueId: parseInt(service["$"].queueId, 10),
+                        parentId: parseInt(service["$"].parentId, 10),
+                        name_en: workNames['en'] || '',
+                        name_ru: workNames['ru'] || '',
+                        name_kz: workNames['kz'] || '',
+                        children: []
+                    };
+            });
 
-                return {
-                    queueId: parseInt(service["$"].queueId, 10),
-                    parentId: parseInt(service["$"].parentId, 10),
-                    name_en: workNames['en'] || '',
-                    name_ru: workNames['ru'] || '',
-                    name_kz: workNames['kz'] || '',
-                    children: []
-                };
-        });
+            const tree = [
+                {
+                    "queueId": 1005,
+                    "parentId": null,
+                    "children": buildTree(transformedServices, 1005)
+                }
+            ]
+            return tree;
+        } else {
+            console.error('There is no services');
+            return false;
+        }
 
         // Построение дерева
         function buildTree(items, rootId) {

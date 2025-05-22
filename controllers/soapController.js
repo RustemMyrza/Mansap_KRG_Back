@@ -176,7 +176,14 @@ const getWebServiceList = (methodData) => async (req, res) => {
 
     const xmlAvailableServiceList = await availableServiceList(methodData(req.query.queueId, req.query.branchId));
     const parsedAvailableServiceList = responseHandlers.availableServiceList(xmlAvailableServiceList);
-    return res.status(200).json(parsedAvailableServiceList);
+    if (parsedAvailableServiceList) {
+        res.status(200).json(parsedAvailableServiceList);
+    } else {
+        res.status(500).json({
+            success: false,
+            message: 'There is no operators'
+        });
+    }
     // let services = await requestToDB('SELECT F_ID, F_NAME, F_ID_PARENT FROM t_g_queue;');
     // services = services.map(service => ({
     //     queueId: service.F_ID,
