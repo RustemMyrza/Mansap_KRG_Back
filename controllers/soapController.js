@@ -389,7 +389,7 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
         const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
 
         const stateActionMap = {
-            'INSERVICE': state[branchId][eventId].lever ? 'CALLING' : 'WAIT',
+            'INSERVICE': state[branchId]?.[eventId]?.lever ? 'CALLING' : 'WAIT',
             'MISSED': 'MISSED',
             'WAIT': 'RESCHEDULLED',
             'DELAYED': 'DELAYED',

@@ -52,6 +52,10 @@ router.get("*", async (req, res) => {
         const ticketList = await allTicketList();
         const callingTicket = getCorrectTicket(ticketList, { branchId, window, eventId });
 
+        if (!state[branchId]) {
+            state[branchId] = {};
+        }
+
         // Инициализируем рубильник и счётчик для каждого eventId
         if (!state[branchId][callingTicket['$']['EventId']]) {
             state[branchId][callingTicket['$']['EventId']] = {
@@ -75,7 +79,7 @@ router.get("*", async (req, res) => {
                     local: local
                 }));
 
-                await client.rTrim(branchId, -20, -1);
+                await redis.rTrim(branchId, -20, -1);
                 console.log(`🎫 Новый талон ${eventId} добавлен в очередь`);
             } else {
                 console.log(`⚠️ Талон ${eventId} уже есть в очереди`);
