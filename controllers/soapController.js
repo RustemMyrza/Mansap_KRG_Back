@@ -19,7 +19,7 @@ const clients = [];
 const ticketStatusCache = {}; // Глобальный кэш статусов билетов
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 3000;
-export const state = { lever: false, requestCount: 0 };
+export const state = {};
 const clientsMap = {};
 
 
@@ -389,7 +389,7 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
         const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
 
         const stateActionMap = {
-            'INSERVICE': state.lever ? 'CALLING' : 'WAIT',
+            'INSERVICE': state[branchId][eventId].lever ? 'CALLING' : 'WAIT',
             'MISSED': 'MISSED',
             'WAIT': 'RESCHEDULLED',
             'DELAYED': 'DELAYED',
@@ -573,7 +573,8 @@ const removeEvent = async (req, res) => {
         for (const ticket of queueTickets) {
             const parsedTicket = JSON.parse(ticket);
             if (parsedTicket.eventId === eventId) {
-                await redis.lrem(branchId, 1, ticket)
+                await redis.lrem(branchId, 1, ticket);
+                delete state[branchId][eventId]
                 break;
             }
         }

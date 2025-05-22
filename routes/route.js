@@ -51,11 +51,20 @@ router.get("*", async (req, res) => {
     try {
         const ticketList = await allTicketList();
         const callingTicket = getCorrectTicket(ticketList, { branchId, window, eventId });
-        // writeToLog(callingTicket)
-        state.requestCount += 1;
 
-        if (state.requestCount >= 2) {
-            state.lever = true;
+        // Инициализируем рубильник и счётчик для каждого eventId
+        if (!state[branchId][callingTicket['$']['EventId']]) {
+            state[branchId][callingTicket['$']['EventId']] = {
+                requestCount: 0,
+                lever: false
+            };
+        }
+
+        state[branchId][callingTicket['$']['EventId']].requestCount += 1;
+
+        if (state[branchId][callingTicket['$']['EventId']].requestCount >= 2 && !state[branchId][callingTicket['$']['EventId']].lever) {
+            state[branchId][callingTicket['$']['EventId']].lever = true;
+
             if (!(await isEventInQueue(callingTicket['$']['EventId'], branchId))) {
                 await redis.lpush(branchId, JSON.stringify({
                     branchId: branchId,
@@ -67,9 +76,9 @@ router.get("*", async (req, res) => {
                 }));
 
                 await client.rTrim(branchId, -20, -1);
-                console.log("🎫 Новый талон добавлен в очередь");
+                console.log(`🎫 Новый талон ${eventId} добавлен в очередь`);
             } else {
-                console.log("⚠️ Талон с таким eventId уже есть в очереди");
+                console.log(`⚠️ Талон ${eventId} уже есть в очереди`);
             }
         }
 
@@ -89,6 +98,7 @@ router.get("*", async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+
 
 
 
