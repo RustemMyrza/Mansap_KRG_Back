@@ -16,7 +16,6 @@ const responseHandlers = {
     },
 
     availableServiceList: (serviceList) => {
-        writeToLog(serviceList);
         const services = serviceList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalMenuList'][0]['xsd:complexType'][1]['xsd:element'];
         if (services) {
             const transformedServices = services.map(service => {

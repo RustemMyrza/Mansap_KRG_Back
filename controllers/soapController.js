@@ -592,7 +592,6 @@ const removeEvent = async (req, res) => {
 async function eventCancel (methodData) {
     try {
         const terminalClient = await getSoapClient(url.terminal);
-        writeToLog(methodData);
         if (!terminalClient[methodData.name]) {
             console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
         }
