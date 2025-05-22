@@ -16,6 +16,7 @@ const responseHandlers = {
     },
 
     availableServiceList: (serviceList) => {
+        writeToLog(serviceList);
         const services = serviceList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalMenuList'][0]['xsd:complexType'][1]['xsd:element'];
         if (services) {
             const transformedServices = services.map(service => {
@@ -112,7 +113,6 @@ const responseHandlers = {
     ticketInfo: async (ticketInfo) => {
         ticketInfo = await ticketInfo;
         const parsedTicketInfo = ticketInfo['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTicketInfo'][0]['xsd:element'][0]['$'];
-        console.log('ticketInfo[soapenv:Envelope][soapenv:Body][0][cus:NomadTicketInfo]', ticketInfo['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTicketInfo']);
         return parsedTicketInfo;
     },
     branchList: (xmlBranchList) => {
@@ -127,7 +127,6 @@ const responseHandlers = {
     },
     newTicketList: (xmlTicketList) => {
         const ticketList = xmlTicketList["soapenv:Envelope"]["soapenv:Body"][0]["cus:NomadAllTicketList"][0]["xsd:complexType"][1]["xsd:element"];
-        console.log('ticketList:', ticketList);
         const structuredTicketList = ticketList
             .filter(ticket => ["NEW", "INSERVICE"].includes(ticket['$']['State']))
             .map(ticket => {

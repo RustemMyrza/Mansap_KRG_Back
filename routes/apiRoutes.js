@@ -169,7 +169,7 @@ router.delete('/cancel-event', async (req, res) => {
 
     const XMLResult = await apiController.eventCancel(soapMethods.NomadTerminalEventSimpleCancel(req.query.branchId, req.query.iin))
     const parsedResultData = await responseHandlers.eventCancel(XMLResult);
-    console.log(parsedResultData);
+    
     if (
         Number(parsedResultData['cus:IsCanceled'][0]) === 1 && 
         parsedResultData['cus:IIN'][0] === iin

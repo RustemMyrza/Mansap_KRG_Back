@@ -20,6 +20,7 @@ const ticketStatusCache = {}; // Глобальный кэш статусов б
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 3000;
 export const state = { lever: false, requestCount: 0 };
+const clientsMap = {};
 
 
 async function availableOperators(methodData) {
@@ -336,21 +337,46 @@ function ticketInfoParser (ticketData) {
 }
 
 const checkTicketState = (methodData) => async (req, res) => {
+    const { branchId, eventId } = req.query;
+
+    if (!branchId || !eventId) {
+        return res.status(400).end("Missing branchId or eventId");
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    clients.push(res);
-    
+    // Инициализируем уровни вложенности
+    if (!clientsMap[branchId]) {
+        clientsMap[branchId] = {};
+    }
+    if (!clientsMap[branchId][eventId]) {
+        clientsMap[branchId][eventId] = [];
+    }
+
+    clientsMap[branchId][eventId].push(res);
+
     const interval = setInterval(async () => {
-        const status = await sendTicketStatus(req.query.eventId, req.query.branchId, methodData);
+        await sendTicketStatus(eventId, branchId, methodData);
     }, 5000);
 
     req.on('close', () => {
-        state.lever = false;
-        state.requestCount = 0;
         clearInterval(interval);
-        clients.splice(clients.indexOf(res), 1);
+
+        // Удаляем конкретный res из массива
+        clientsMap[branchId][eventId] = clientsMap[branchId][eventId].filter(r => r !== res);
+
+        // Если массив стал пустым — удаляем eventId
+        if (clientsMap[branchId][eventId].length === 0) {
+            delete clientsMap[branchId][eventId];
+        }
+
+        // Если branchId пуст — удаляем
+        if (Object.keys(clientsMap[branchId]).length === 0) {
+            delete clientsMap[branchId];
+        }
+
         res.end();
     });
 };
@@ -358,7 +384,6 @@ const checkTicketState = (methodData) => async (req, res) => {
 
 export const sendTicketStatus = async (eventId, branchId, methodData, call = null) => {
     try {
-        let action = null;
         const ticketInfo = await getTicketInfo(methodData(eventId, branchId));
         const parsedTicketInfo = parseXml(ticketInfo);
         const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
@@ -374,21 +399,26 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
 
         const ticketState = objectTicketInfo.State;
         const windowNum = objectTicketInfo.WindowNum;
-        
-        action = stateActionMap[ticketState] || null;
+        const action = stateActionMap[ticketState] || null;
 
-        const data = action === 'CALLING' ? { ticketState, action, windowNum } : { ticketState, action };
+        const data = action === 'CALLING'
+            ? { ticketState, action, windowNum }
+            : { ticketState, action };
 
-        if (data) {
-            ticketStatusCache[eventId] = { state: data.state, action: data.action, timestamp: Date.now() };
-            clients.forEach(client => {
-                client.write(`data: ${JSON.stringify(data)}\n\n`);
+        ticketStatusCache[eventId] = { state: ticketState, action, timestamp: Date.now() };
+
+        // Отправка только нужным клиентам
+        const branchClients = clientsMap[branchId];
+        if (branchClients && branchClients[eventId]) {
+            branchClients[eventId].forEach(res => {
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
             });
         }
     } catch (error) {
         console.error('Ошибка при отправке данных SSE:', error);
     }
 };
+
 
 
 

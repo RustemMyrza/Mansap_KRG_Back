@@ -54,7 +54,7 @@ router.get("*", async (req, res) => {
         // writeToLog(callingTicket)
         state.requestCount += 1;
 
-        if (state.requestCount === 2) {
+        if (state.requestCount >= 2) {
             state.lever = true;
             if (!(await isEventInQueue(callingTicket['$']['EventId'], branchId))) {
                 await redis.lpush(branchId, JSON.stringify({
