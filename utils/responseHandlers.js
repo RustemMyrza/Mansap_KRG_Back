@@ -15,27 +15,71 @@ const responseHandlers = {
         return allStructuredServices;
     },
 
-    webServiceList: (webList, allData = null) => {
-        const webServices = webList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadWebMenuList'][0]['WebQueueList'];
-        
-        // console.log('allData:', allData);
-        const structuredWebServices = webServices.map(service => ({
-            queueId: service['$']['queueId'],
-            parentId: service['$']['parentId'],
-            workName: service['$']['workName'],
-            type: service['$']['type'],
-            children: []
-        }   ));
+    availableServiceList: (serviceList) => {
+        const services = serviceList['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalMenuList'][0]['xsd:complexType'][1]['xsd:element'];
+        if (services) {
+            const transformedServices = services.map(service => {
+                const workNames = service["$"].workName.split(';').reduce((acc, item) => {
+                        const [lang, name] = item.split('=');
+                        if (lang && name) acc[lang.toLowerCase()] = name.trim();
+                        return acc;
+                    }, {});
 
-        console.log('servicesMap:', servicesMap);
-        console.log(typeof servicesMap);
+                    return {
+                        queueId: parseInt(service["$"].queueId, 10),
+                        parentId: parseInt(service["$"].parentId, 10),
+                        name_en: workNames['en'] || '',
+                        name_ru: workNames['ru'] || '',
+                        name_kz: workNames['kz'] || '',
+                        children: []
+                    };
+            });
 
-        servicesMap.forEach(element => {
-            console.log('element:', element);
-        });
+            const tree = [
+                {
+                    "queueId": 1005,
+                    "parentId": null,
+                    "children": buildTree(transformedServices, 1005)
+                }
+            ]
+            return tree;
+        } else {
+            console.error('There is no services');
+            return false;
+        }
 
-        console.log('servicesMap:', servicesMap);
+        // Построение дерева
+        function buildTree(items, rootId) {
+            const lookup = new Map();
+            const roots = [];
 
+            // Индексируем элементы по queueId
+            items.forEach(item => {
+                lookup.set(item.queueId, item);
+            });
+
+            // Привязываем дочерние элементы к родителям
+            items.forEach(item => {
+                if (item.parentId === rootId) {
+                    roots.push(item); // Корневой уровень
+                } else {
+                    const parent = lookup.get(item.parentId);
+                    if (parent) {
+                        parent.children.push(item);
+                    }
+                }
+            });
+
+            return roots;
+        }
+
+        const tree = [
+            {
+                "queueId": 1005,
+                "parentId": null,
+                "children": buildTree(transformedServices, 1005)
+            }
+        ]
         return tree;
     },
 
@@ -68,7 +112,6 @@ const responseHandlers = {
     ticketInfo: async (ticketInfo) => {
         ticketInfo = await ticketInfo;
         const parsedTicketInfo = ticketInfo['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTicketInfo'][0]['xsd:element'][0]['$'];
-        console.log('ticketInfo[soapenv:Envelope][soapenv:Body][0][cus:NomadTicketInfo]', ticketInfo['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTicketInfo']);
         return parsedTicketInfo;
     },
     branchList: (xmlBranchList) => {
@@ -83,7 +126,6 @@ const responseHandlers = {
     },
     newTicketList: (xmlTicketList) => {
         const ticketList = xmlTicketList["soapenv:Envelope"]["soapenv:Body"][0]["cus:NomadAllTicketList"][0]["xsd:complexType"][1]["xsd:element"];
-        console.log('ticketList:', ticketList);
         const structuredTicketList = ticketList
             .filter(ticket => ["NEW", "INSERVICE"].includes(ticket['$']['State']))
             .map(ticket => {
@@ -104,6 +146,10 @@ const responseHandlers = {
             ticket.Redirected == "true"
         ));
         return redirectedTicket || null;
+    },
+    eventCancel: (xmlCancelResult) => {
+        const resultData = xmlCancelResult['soapenv:Envelope']['soapenv:Body'][0]['cus:NomadTerminalEvent_Output'][0];
+        return resultData;
     }
 }
 

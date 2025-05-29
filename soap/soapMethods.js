@@ -13,6 +13,23 @@ const soapMethods = {
             }
         }
     },
+
+    NomadTerminalMenuList: (parentQueueId, branchId) =>  ({
+        name: 'NomadTerminalMenuList',
+        args:  {
+            "cus:NomadTerminalMenuList_Input": {
+                "cus:ParentQueueIdTerminal": parentQueueId,
+                "cus:BranchQueueId": branchId
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
+    }),
+
     NomadWebMenuList: {
         name: 'NomadWebMenuList',
         args:  {
@@ -171,6 +188,21 @@ const soapMethods = {
             'cus:NomadTerminalTicketRatingOrder_Input': {
                 'cus:EventRatingOrder': orderId,
                 'cus:Rating': rating
+            }
+        },
+        options: {
+            overrideRootElement: {
+                namespace: "cus",
+                xmlnsAttributes: [{ name: "xmlns:cus", value: "http://nomad.org/CustomUI" }]
+            }
+        }
+    }),
+    NomadTerminalEventSimpleCancel: (branchId, iin) => ({
+        name: 'NomadTerminalEventSimpleCancel',
+        args: {
+            'cus:NomadTerminalEventSimpleCancel_Input': {
+                'cus:BranchId': branchId,
+                'cus:CancelIIN': iin
             }
         },
         options: {

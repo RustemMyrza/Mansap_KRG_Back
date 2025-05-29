@@ -6,6 +6,7 @@ import sendSMS from '../sms-test.js';
 import errorLog from '../Log/errorLog.js';
 import dotenv from 'dotenv';
 import redis from "../db/redisConnect.js";
+import writeToLog from '../Log/toLog.js';
 
 dotenv.config();
 
@@ -18,7 +19,8 @@ const clients = [];
 const ticketStatusCache = {}; // Глобальный кэш статусов билетов
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 3000;
-export const state = { lever: false, requestCount: 0 };
+export const state = {};
+const clientsMap = {};
 
 
 async function availableOperators(methodData) {
@@ -27,7 +29,6 @@ async function availableOperators(methodData) {
 
         if (!operatorClient[methodData.name]) {
             console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
-            throw new Error('SOAP method not found');
         }
 
         return new Promise((resolve, reject) => { // ✅ Возвращаем новый Promise
@@ -45,7 +46,6 @@ async function availableOperators(methodData) {
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
         errorLog(error);
-        throw error;
     }
 }
 
@@ -55,7 +55,6 @@ async function getTicket (methodData) {
 
         if (!terminalClient[methodData.name]) {
             console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
-            throw new Error('SOAP method not found');
         }
 
         return new Promise((resolve, reject) => {
@@ -73,7 +72,6 @@ async function getTicket (methodData) {
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
         errorLog(error);
-        throw error;
     }
 }
 
@@ -100,7 +98,6 @@ const getBranchList = (methodData, retryCount = 0) => async (req, res) => {
 
         if (!terminalClient[methodData.name]) {
             console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
-            throw new Error('SOAP method not found');
         }
 
         terminalClient[methodData.name](methodData.args, methodData.options, async (err, result, rawResponse) => {
@@ -129,18 +126,24 @@ const getBranchList = (methodData, retryCount = 0) => async (req, res) => {
                 return branch;
             });
 
+            const map = new Map();
+            const tree = [];
+
             result.Branch.forEach(item => {
                 const node = { ...item.attributes, children: [] };
                 map.set(node.branchId, node);
-                
-                if (node.parentId === "null") {
+            });
+
+            result.Branch.forEach(item => {
+                const node = map.get(item.attributes.branchId);
+                const parentId = item.attributes.parentId;
+            
+                if (parentId === "null") {
                     tree.push(node);
                 } else {
-                    const parent = map.get(node.parentId);
+                    const parent = map.get(parentId);
                     if (parent) {
                         parent.children.push(node);
-                    } else {
-                        map.set(node.parentId, { children: [node] });
                     }
                 }
             });
@@ -151,51 +154,85 @@ const getBranchList = (methodData, retryCount = 0) => async (req, res) => {
     } catch (error) {
         console.error("Ошибка при вызове SOAP-клиента:", error);
         errorLog(error);
-        throw error;
     }
 }
 
-const getWebServiceList = () => async (req, res) => {
-    const tree = [];
-    const map = new Map();
+const getWebServiceList = (methodData) => async (req, res) => {
+    // const tree = [];
+    // const map = new Map();
 
-    function parseName(name) {
-        const parts = name.split(';');
-        const parsed = {};
+    // function parseName(name) {
+    //     const parts = name.split(';');
+    //     const parsed = {};
       
-        for (const part of parts) {
-          const [lang, value] = part.split('=');
-          if (lang && value) {
-            parsed[`name_${lang.toLowerCase()}`] = value.trim();
-          }
-        }
+    //     for (const part of parts) {
+    //       const [lang, value] = part.split('=');
+    //       if (lang && value) {
+    //         parsed[`name_${lang.toLowerCase()}`] = value.trim();
+    //       }
+    //     }
       
-        return parsed;
+    //     return parsed;
+    // }
+
+    const xmlAvailableServiceList = await availableServiceList(methodData(req.query.queueId, req.query.branchId));
+    const parsedAvailableServiceList = responseHandlers.availableServiceList(xmlAvailableServiceList);
+    if (parsedAvailableServiceList) {
+        res.status(200).json(parsedAvailableServiceList);
+    } else {
+        res.status(500).json({
+            success: false,
+            message: 'There is no operators'
+        });
     }
-    
-    let services = await requestToDB('SELECT F_ID, F_NAME, F_ID_PARENT FROM t_g_queue;');
-    services = services.map(service => ({
-        queueId: service.F_ID,
-        parentId: service.F_ID_PARENT,
-        visible: service.F_WEB_VISIBLE,
-        ...parseName(service.F_NAME)
-    }))
+    // let services = await requestToDB('SELECT F_ID, F_NAME, F_ID_PARENT FROM t_g_queue;');
+    // services = services.map(service => ({
+    //     queueId: service.F_ID,
+    //     parentId: service.F_ID_PARENT,
+    //     visible: service.F_WEB_VISIBLE,
+    //     ...parseName(service.F_NAME)
+    // }))
 
-    services.forEach(item => {
-        map.set(item.queueId, { ...item, children: [] });
-    });
+    // services.forEach(item => {
+    //     map.set(item.queueId, { ...item, children: [] });
+    // });
     
-    // Формируем иерархию
-    services.forEach(item => {
-        if (map.has(item.parentId)) {
-            map.get(item.parentId).children.push(map.get(item.queueId));
-        } else {
-            tree.push(map.get(item.queueId));
-        }
-    });
-    return res.json(tree);
+    // // Формируем иерархию
+    // services.forEach(item => {
+    //     if (map.has(item.parentId)) {
+    //         map.get(item.parentId).children.push(map.get(item.queueId));
+    //     } else {
+    //         tree.push(map.get(item.queueId));
+    //     }
+    // });
+    // return res.json(tree);
 };
 
+async function availableServiceList (methodData) {
+    try {
+        const terminalClient = await getSoapClient(url.terminal);
+
+        if (!terminalClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+        }
+
+        return new Promise((resolve, reject) => { // ✅ Возвращаем новый Promise
+            terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const parsedResponse = parseXml(rawResponse);
+                resolve(parsedResponse); // ✅ Возвращаем результат
+            });
+        });
+
+    } catch (error) {
+        errorLog(error);
+    }
+}
 
 async function getTicketInfo(methodData) {
     try {
@@ -204,8 +241,7 @@ async function getTicketInfo(methodData) {
         // console.log("SOAP-клиент загружен:", terminalClient);
 
         if (!terminalClient[methodData.name]) {
-            // console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
-            throw new Error('SOAP method not found');
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
         }
 
         return new Promise((resolve, reject) => {
@@ -217,7 +253,6 @@ async function getTicketInfo(methodData) {
                     // console.error(`[${new Date().toISOString()}] Критическая ошибка SOAP:`, err);
                     return reject(err);
                 }
-
                 // console.warn(`[${new Date().toISOString()}] Ошибка SOAP, но есть данные:`, err);
                 resolve(rawResponse || result);
             });
@@ -225,36 +260,6 @@ async function getTicketInfo(methodData) {
     } catch (error) {
         // console.error("Ошибка при вызове SOAP-клиента:", error);
         errorLog(error);
-        throw error;
-    }
-}
-
-async function cancelTheQueue (methodData) {
-    try {
-        const operatorClient = await getSoapClient(url.operator);
-
-        if (!operatorClient[methodData.name]) {
-            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
-            throw new Error('SOAP method not found');
-        }
-
-        return new Promise((resolve, reject) => {
-            operatorClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
-                if (err) {
-                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
-                    return reject(err);
-                }
-    
-                console.log(`[${new Date().toISOString()}] Ответ получен!`);
-                console.log('rawResponse:', rawResponse);
-                // const parsedResponse = parseXml(rawResponse);
-                // resolve(parsedResponse);
-            })
-        })
-    } catch (error) {        
-        console.error("Ошибка при вызове SOAP-клиента:", error);
-        errorLog(error);
-        throw error;
     }
 }
 
@@ -332,21 +337,46 @@ function ticketInfoParser (ticketData) {
 }
 
 const checkTicketState = (methodData) => async (req, res) => {
+    const { branchId, eventId } = req.query;
+
+    if (!branchId || !eventId) {
+        return res.status(400).end("Missing branchId or eventId");
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    clients.push(res);
-    
+    // Инициализируем уровни вложенности
+    if (!clientsMap[branchId]) {
+        clientsMap[branchId] = {};
+    }
+    if (!clientsMap[branchId][eventId]) {
+        clientsMap[branchId][eventId] = [];
+    }
+
+    clientsMap[branchId][eventId].push(res);
+
     const interval = setInterval(async () => {
-        const status = await sendTicketStatus(req.query.eventId, req.query.branchId, methodData);
+        await sendTicketStatus(eventId, branchId, methodData);
     }, 5000);
 
     req.on('close', () => {
-        state.lever = false;
-        state.requestCount = 0;
         clearInterval(interval);
-        clients.splice(clients.indexOf(res), 1);
+
+        // Удаляем конкретный res из массива
+        clientsMap[branchId][eventId] = clientsMap[branchId][eventId].filter(r => r !== res);
+
+        // Если массив стал пустым — удаляем eventId
+        if (clientsMap[branchId][eventId].length === 0) {
+            delete clientsMap[branchId][eventId];
+        }
+
+        // Если branchId пуст — удаляем
+        if (Object.keys(clientsMap[branchId]).length === 0) {
+            delete clientsMap[branchId];
+        }
+
         res.end();
     });
 };
@@ -354,13 +384,12 @@ const checkTicketState = (methodData) => async (req, res) => {
 
 export const sendTicketStatus = async (eventId, branchId, methodData, call = null) => {
     try {
-        let action = null;
         const ticketInfo = await getTicketInfo(methodData(eventId, branchId));
         const parsedTicketInfo = parseXml(ticketInfo);
         const objectTicketInfo = await responseHandlers.ticketInfo(parsedTicketInfo);
 
         const stateActionMap = {
-            'INSERVICE': state.lever ? 'CALLING' : 'WAIT',
+            'INSERVICE': state[branchId]?.[eventId]?.lever ? 'CALLING' : 'WAIT',
             'MISSED': 'MISSED',
             'WAIT': 'RESCHEDULLED',
             'DELAYED': 'DELAYED',
@@ -370,21 +399,26 @@ export const sendTicketStatus = async (eventId, branchId, methodData, call = nul
 
         const ticketState = objectTicketInfo.State;
         const windowNum = objectTicketInfo.WindowNum;
-        
-        action = stateActionMap[ticketState] || null;
+        const action = stateActionMap[ticketState] || null;
 
-        const data = action === 'CALLING' ? { ticketState, action, windowNum } : { ticketState, action };
+        const data = action === 'CALLING'
+            ? { ticketState, action, windowNum }
+            : { ticketState, action };
 
-        if (data) {
-            ticketStatusCache[eventId] = { state: data.state, action: data.action, timestamp: Date.now() };
-            clients.forEach(client => {
-                client.write(`data: ${JSON.stringify(data)}\n\n`);
+        ticketStatusCache[eventId] = { state: ticketState, action, timestamp: Date.now() };
+
+        // Отправка только нужным клиентам
+        const branchClients = clientsMap[branchId];
+        if (branchClients && branchClients[eventId]) {
+            branchClients[eventId].forEach(res => {
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
             });
         }
     } catch (error) {
         console.error('Ошибка при отправке данных SSE:', error);
     }
 };
+
 
 
 
@@ -420,7 +454,6 @@ async function rateService (methodData) {
 
         if (!terminalClient[methodData.name]) {
             console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
-            throw new Error('SOAP method not found');
         }
 
         return new Promise((resolve, reject) => { // ✅ Возвращаем новый Promise
@@ -525,15 +558,68 @@ const getSMS = async (req, res) => {
 }
 
 
+const removeEvent = async (req, res) => {
+    const eventId = req.query.eventId;
+    const branchId = req.query.branchId;
 
+    if (!eventId || !branchId) {
+        res.status(500).json({
+            error: 'Произошла ошибка с параметрами'
+        })
+    }
+
+    try {
+        const queueTickets = await redis.lrange(branchId, 0, -1);
+        for (const ticket of queueTickets) {
+            const parsedTicket = JSON.parse(ticket);
+            if (parsedTicket.eventId === eventId) {
+                await redis.lrem(branchId, 1, ticket);
+                delete state[branchId][eventId]
+                break;
+            }
+        }
+        res.status(200).json({
+            message: 'Данные были успешно удалены с очереди'
+        })
+    } catch (error) {
+        res.status(500).json({
+            error: 'Ошибка при удалений с очереди Redis',
+            message: error.message
+        });
+    }
+}
+
+async function eventCancel (methodData) {
+    try {
+        const terminalClient = await getSoapClient(url.terminal);
+        if (!terminalClient[methodData.name]) {
+            console.error(`[${new Date().toISOString()}] Метод ${methodData.name} не найден!`);
+        }
+
+        return new Promise((resolve, reject) => {
+            terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
+                if (err) {
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    return reject(err);
+                }
+    
+                console.log(`[${new Date().toISOString()}] Ответ получен!`);
+                const xmlData = parseXml(rawResponse);
+                resolve(xmlData);
+            });
+        })
+    } catch (error) {
+        console.error("Ошибка при вызове SOAP-клиента:", error);
+        errorLog(error);
+    }
+}
 
 export default { 
     getWebServiceList, 
     getBranchList, 
     availableOperators, 
     getTicketInfo, 
-    getTicket, 
-    cancelTheQueue, 
+    getTicket,
     branchWindowList, 
     ticketInfoParser, 
     ticketList, 
@@ -543,5 +629,7 @@ export default {
     sendTicketStatus,
     operatorTicketList,
     getVideoServerData,
-    getSMS
+    getSMS,
+    removeEvent,
+    eventCancel
 };

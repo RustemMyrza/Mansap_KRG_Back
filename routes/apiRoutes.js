@@ -5,6 +5,7 @@ import responseHandlers from '../utils/responseHandlers.js';
 import requestToDB from '../db/dbconnect.js';
 import { parseXml } from '../xmlParser.js';
 import writeToLog from "../Log/toLog.js";
+import errorLog from "../Log/errorLog.js";
 
 const router = express.Router();
 
@@ -12,21 +13,8 @@ const router = express.Router();
 router.use(express.json());
 router.use(express.urlencoded({ extended: true }));
 
-router.get('/web-service/list', apiController.getWebServiceList());
+router.get('/web-service/list', apiController.getWebServiceList(soapMethods.NomadTerminalMenuList));
 router.get('/branch/list', apiController.getBranchList(soapMethods.NomadTerminalBranchList));
-router.delete('/request/cancel-ticket', (req, res) => {
-    const eventId = req.query.eventId; // Получаем eventId из query-параметров
-    if (!eventId) {
-        return res.status(400).json({ error: 'eventId is required' });
-    }
-
-    console.log('Received eventId:', eventId);
-    // Дальше вызываешь apiController с нужным eventId
-    apiController.cancelTheQueue(soapMethods.NomadOperatorMissed(eventId))
-        .then(() => res.json({ success: true }))
-        .catch(err => res.status(500).json({ error: err.message }));
-});
-
 
 router.get('/get-count-queue-people', async (req, res) => {
     try {
@@ -135,33 +123,6 @@ router.post('/request/get-ticket', async (req, res) => {
             req.body.branchId
         ));
         const availableOperatorsList = responseHandlers.availableOperators(availableOperators)
-        if (availableOperatorsList.length > 0) {
-            const ticket = await apiController.getTicket(soapMethods.NomadTerminalEvent_Now2(
-                req.body.queueId,
-                req.body.iin,
-                req.body.phoneNum,
-                req.body.branchId,
-                req.body.local
-            ));
-            const ticketData = responseHandlers.getTicket(ticket);
-            res.status(200).json(ticketData);
-        } else {
-            throw new Error ('Нет подходящих операторов');
-        }
-    } catch (error) {
-        console.error("Ошибка в обработке запроса:", error);
-        errorLog(error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-router.post('/request/get-ticket', async (req, res) => {
-    try {
-        const availableOperators = await apiController.availableOperators(soapMethods.NomadOperatorList(
-            req.body.queueId, 
-            req.body.branchId
-        ));
-        const availableOperatorsList = responseHandlers.availableOperators(availableOperators)
         // if (availableOperatorsList.length > 0) {
             const ticket = await apiController.getTicket(soapMethods.NomadTerminalEvent_Now2(
                 req.body.queueId,
@@ -186,7 +147,6 @@ router.post('/request/get-ticket-sms', apiController.getSMS)
 
 router.get('/get-redirected-ticket', apiController.checkRedirectedTicket(soapMethods.NomadEvent_Info, soapMethods.NomadAllTicketList('?')));
 router.get('/get-ticket-info', async (req, res) => {
-    console.log('req.query', req.query);
     const eventId = req.query.eventId;
     const branchId = req.query.branchId;
     const XMLResult = await apiController.getTicketInfo(soapMethods.NomadEvent_Info(eventId, branchId));
@@ -196,4 +156,35 @@ router.get('/get-ticket-info', async (req, res) => {
 })
 
 router.get('/get-video-server-data', apiController.getVideoServerData);
+router.delete('/remove-ticket-queue', apiController.removeEvent);
+router.delete('/cancel-event', async (req, res) => {
+    const iin = req.query.iin;
+    const branchId = req.query.branchId;
+    
+    if (!iin || !branchId) {
+        res.status(500).json({
+            error: 'Произошла ошибка с параметрами'
+        })
+    }
+
+    const XMLResult = await apiController.eventCancel(soapMethods.NomadTerminalEventSimpleCancel(req.query.branchId, req.query.iin))
+    const parsedResultData = await responseHandlers.eventCancel(XMLResult);
+    
+    if (
+        Number(parsedResultData['cus:IsCanceled'][0]) === 1 && 
+        parsedResultData['cus:IIN'][0] === iin
+    ) {
+        res.status(200).json({
+            success: true,
+            branchId: branchId,
+            iin: iin,
+            message: `Event with parameters branchId - ${branchId}, iin - ${iin} was successfully canceled`
+        })
+    } else {
+        res.status(500).json({
+            success: false,
+            error: 'Произошла ошибка при попытке отмены Event'
+        })
+    }
+})
 export default router;
