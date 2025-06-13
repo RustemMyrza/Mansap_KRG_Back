@@ -174,15 +174,23 @@ const getWebServiceList = (methodData) => async (req, res) => {
       
     //     return parsed;
     // }
-
     const xmlAvailableServiceList = await availableServiceList(methodData(req.query.queueId, req.query.branchId));
     const parsedAvailableServiceList = responseHandlers.availableServiceList(xmlAvailableServiceList);
     if (parsedAvailableServiceList) {
-        res.status(200).json(parsedAvailableServiceList);
-    } else {
+        res.status(200).json({
+            success: true,
+            data: parsedAvailableServiceList
+        });
+    } else if (req.query.queueId === '1005') {
         res.status(500).json({
             success: false,
             message: 'There is no operators'
+        });
+    } else {
+        res.status(200).json({
+            success: true,
+            data: [],
+            message: 'There is no child services'
         });
     }
     // let services = await requestToDB('SELECT F_ID, F_NAME, F_ID_PARENT FROM t_g_queue;');
@@ -219,7 +227,7 @@ async function availableServiceList (methodData) {
         return new Promise((resolve, reject) => { // ✅ Возвращаем новый Promise
             terminalClient[methodData.name](methodData.args, methodData.options, (err, result, rawResponse) => {
                 if (err) {
-                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`, err);
+                    console.error(`[${new Date().toISOString()}] Ошибка SOAP запроса:`);
                     return reject(err);
                 }
 

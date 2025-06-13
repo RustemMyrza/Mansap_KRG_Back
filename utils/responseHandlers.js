@@ -34,53 +34,44 @@ const responseHandlers = {
                         children: []
                     };
             });
-
-            const tree = [
-                {
-                    "queueId": 1005,
-                    "parentId": null,
-                    "children": buildTree(transformedServices, 1005)
-                }
-            ]
-            return tree;
+            return transformedServices;
+            // const tree = [
+            //     {
+            //         "queueId": 1005,
+            //         "parentId": null,
+            //         "children": buildTree(transformedServices, 1005)
+            //     }
+            // ]
+            // return tree;
         } else {
             console.error('There is no services');
             return false;
         }
 
         // Построение дерева
-        function buildTree(items, rootId) {
-            const lookup = new Map();
-            const roots = [];
+        // function buildTree(items, rootId) {
+        //     const lookup = new Map();
+        //     const roots = [];
 
-            // Индексируем элементы по queueId
-            items.forEach(item => {
-                lookup.set(item.queueId, item);
-            });
+        //     // Индексируем элементы по queueId
+        //     items.forEach(item => {
+        //         lookup.set(item.queueId, item);
+        //     });
 
-            // Привязываем дочерние элементы к родителям
-            items.forEach(item => {
-                if (item.parentId === rootId) {
-                    roots.push(item); // Корневой уровень
-                } else {
-                    const parent = lookup.get(item.parentId);
-                    if (parent) {
-                        parent.children.push(item);
-                    }
-                }
-            });
+        //     // Привязываем дочерние элементы к родителям
+        //     items.forEach(item => {
+        //         if (item.parentId === rootId) {
+        //             roots.push(item); // Корневой уровень
+        //         } else {
+        //             const parent = lookup.get(item.parentId);
+        //             if (parent) {
+        //                 parent.children.push(item);
+        //             }
+        //         }
+        //     });
 
-            return roots;
-        }
-
-        const tree = [
-            {
-                "queueId": 1005,
-                "parentId": null,
-                "children": buildTree(transformedServices, 1005)
-            }
-        ]
-        return tree;
+        //     return roots;
+        // }
     },
 
     availableOperators: (operatorList) => {
