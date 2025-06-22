@@ -442,7 +442,7 @@ const checkRedirectedTicket = (eventMethodData, allTicketMethodData) => async (r
         const structuredNewTicketData = responseHandlers.newTicketList(xmlAllTicketData);
         if (structuredNewTicketData.length > 0) {
             const redirectedTicket = responseHandlers.redirectedTicket(structuredNewTicketData, structuredTicketInfo);
-            res.json(redirectedTicket);
+            res.status(200).json(redirectedTicket);
         } else {
             res.status(400).json({
                 success: false,
